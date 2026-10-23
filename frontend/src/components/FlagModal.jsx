@@ -3,7 +3,7 @@ import { Flag, X, Send, AlertTriangle } from 'lucide-react';
 import { submitFlag } from '../services/api';
 
 export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuccess }) {
-  const [reason, setReason] = useState('Maling impormasyon o factual error');
+  const [reason, setReason] = useState('Incorrect information or factual error');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -11,11 +11,11 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
   if (!isOpen) return null;
 
   const defaultReasons = [
-    'Maling impormasyon o factual error',
-    'Malabo o nakakalito ang pagkakagawa',
-    'Maling choices o maling sagot',
-    'Typo o formatting issue',
-    'Iba pang dahilan (specify sa baba)',
+    'Incorrect information or factual error',
+    'Unclear or confusing wording',
+    'Wrong choices or wrong answer',
+    'Typo or formatting issue',
+    'Other reason (specify below)',
   ];
 
   const handleSubmit = async (e) => {
@@ -25,10 +25,10 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
 
     try {
       await submitFlag(targetType, targetId, reason, notes);
-      onSuccess?.('Salamat sa pag-flag! Naitala na namin ito para maayos.');
+      onSuccess?.("Thanks for flagging! We've logged it so it can be fixed.");
       onClose();
     } catch (err) {
-      setError(err.message || 'May problema sa pag-save ng flag.');
+      setError(err.message || 'There was a problem saving the flag.');
     } finally {
       setIsSubmitting(false);
     }
@@ -40,7 +40,7 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2 text-amber-600 font-semibold text-lg">
             <Flag className="w-5 h-5" />
-            <span>I-flag ang {targetType === 'flashcard' ? 'Flashcard' : 'Tanong'}</span>
+            <span>Flag {targetType === 'flashcard' ? 'Flashcard' : 'Question'}</span>
           </div>
           <button
             onClick={onClose}
@@ -51,7 +51,7 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
         </div>
 
         <p className="text-xs text-slate-500 mt-3">
-          May napansing mali o nakakalito? Tulungan natin si Kabi na mas maging tumpak ang reviewer!
+          Spotted something wrong or confusing? Help Kabi make the reviewer more accurate!
         </p>
 
         {error && (
@@ -64,7 +64,7 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Ano ang problema?
+              What's the problem?
             </label>
             <div className="space-y-1.5">
               {defaultReasons.map((r) => (
@@ -92,12 +92,12 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Karagdagang paliwanag (Optional):
+              Additional details (optional):
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Halimbawa: Ayon sa page 4 ng module, hindi si Aguinaldo kundi si Bonifacio..."
+              placeholder="Example: According to page 4 of the module, it was Bonifacio, not Aguinaldo..."
               className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none h-20 resize-none"
             />
           </div>
@@ -108,7 +108,7 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition"
             >
-              Kanselahin
+              Cancel
             </button>
             <button
               type="submit"
@@ -116,7 +116,7 @@ export default function FlagModal({ isOpen, onClose, targetType, targetId, onSuc
               className="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition flex items-center gap-1.5 disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Isinusumite...' : 'Ipadala ang Flag'}</span>
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Flag'}</span>
             </button>
           </div>
         </form>

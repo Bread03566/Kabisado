@@ -18,18 +18,18 @@ import Mascot from '../components/Mascot';
 import { uploadDocumentFile, createDocumentFromText, deleteDocument } from '../services/api';
 
 const SAMPLE_MODULE = {
-  title: "Aralin 1: Ang Kasaysayan ng Kilusang Propaganda at si Jose Rizal",
-  text: `Kabanata 1: Ang Kalagayan ng Pilipinas noong Ika-19 na Siglo
-Noong ika-19 na siglo, ang Pilipinas ay nasa ilalim ng pamamahala ng Imperyong Espanyol. Laganap ang diskriminasyon sa pagitan ng mga Kastila (peninsulares at insulares) at mga katutubong Pilipino (indio). Ang mga prayle ang may hawak sa malalaking hacienda at may matinding impluwensya sa pamahalaan at edukasyon. Sa kabila nito, ang pagbubukas ng Suez Canal noong 1869 ay nagdulot ng mas mabilis na kalakalan at pagpasok ng mga kaisipang liberal mula sa Europa.
+  title: "Lesson 1: The History of the Propaganda Movement and Jose Rizal",
+  text: `Chapter 1: The Philippines in the 19th Century
+In the 19th century, the Philippines was under the rule of the Spanish Empire. Discrimination was widespread between Spaniards (peninsulares and insulares) and native Filipinos (indios). The friars controlled large haciendas and held strong influence over the government and education. Even so, the opening of the Suez Canal in 1869 brought faster trade and the arrival of liberal ideas from Europe.
 
-Kabanata 2: Ang Pag-usbong ng Kilusang Propaganda
-Ang Kilusang Propaganda ay isang mapayapang kilusan na binuo ng mga ilustrado o mga Pilipinong nakapag-aral sa Europa. Ang kanilang pangunahing layunin ay hindi ang agarang himagsikan, kundi ang asimilasyon o pagiging opisyal na lalawigan ng Espanya ang Pilipinas. Hiniling nila ang pantay na karapatan sa ilalim ng batas, kalayaan sa pamamahayag, sekularisasyon ng mga parokya, at pagkakaroon ng kinatawan sa Cortes ng Espanya. Ang opisyal na pahayagan ng kilusan ay ang La Solidaridad na itinatag ni Graciano Lopez Jaena sa Barcelona.
+Chapter 2: The Rise of the Propaganda Movement
+The Propaganda Movement was a peaceful movement formed by the ilustrados, Filipinos who had studied in Europe. Their main goal was not immediate revolution but assimilation, making the Philippines an official province of Spain. They called for equal rights under the law, freedom of the press, secularization of the parishes, and representation in the Spanish Cortes. The movement's official newspaper was La Solidaridad, founded by Graciano Lopez Jaena in Barcelona.
 
-Kabanata 3: Ang Buhay at mga Akda ni Dr. Jose Rizal
-Si Dr. Jose Protacio Rizal Mercado y Alonso Realonda ay isinilang noong Hunyo 19, 1861 sa Calamba, Laguna. Siya ay itinuturing na Pambansang Bayani ng Pilipinas dahil sa kanyang matatalinong akda na gumising sa damdaming makabayan ng mga mamamayan. Ang kanyang unang nobela, ang Noli Me Tangere, ay nalimbag sa Berlin noong 1887. Ito ay isang nobelang panlipunan na naglantad sa mga sakit ng lipunan at pang-aabuso ng mga tiwaling pinuno. Ang kanyang pangalawang nobela, ang El Filibusterismo, ay nalimbag sa Ghent noong 1891 na may mas mapangahas at rebolusyonaryong diwa.
+Chapter 3: The Life and Works of Dr. Jose Rizal
+Dr. Jose Protacio Rizal Mercado y Alonso Realonda was born on June 19, 1861 in Calamba, Laguna. He is regarded as the National Hero of the Philippines because his brilliant writings awakened the nationalist spirit of the people. His first novel, Noli Me Tangere, was published in Berlin in 1887. It is a social novel that exposed the ills of society and the abuses of corrupt leaders. His second novel, El Filibusterismo, was published in Ghent in 1891 with a bolder and more revolutionary spirit.
 
-Kabanata 4: Ang Pagtatapos ng Kilusan at Pagsiklab ng Katipunan
-Bagamat hindi nakamit ng Kilusang Propaganda ang lahat ng kanilang hiniling na reporma mula sa pamahalaang Espanyol, ang kanilang mga isinulat ay naging mitsa upang maitatag ni Andres Bonifacio ang KKK (Kataas-taasang, Kagalang-galangang Katipunan ng mga Anak ng Bayan) noong Hulyo 7, 1892. Dito nagsimula ang armadong rebolusyon para sa ganap na kalayaan ng Inang Bayan.`
+Chapter 4: The End of the Movement and the Rise of the Katipunan
+Although the Propaganda Movement did not win all the reforms it asked of the Spanish government, its writings became the spark that led Andres Bonifacio to found the KKK (Kataas-taasang, Kagalang-galangang Katipunan ng mga Anak ng Bayan) on July 7, 1892. This marked the beginning of the armed revolution for the complete independence of the motherland.`
 };
 
 export default function UploadLibraryView({ 
@@ -50,20 +50,20 @@ export default function UploadLibraryView({
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext !== 'pdf' && ext !== 'docx') {
-      showToast('error', 'PDF o DOCX file lang muna ang puwede, lodi!');
+      showToast('error', 'Only PDF or DOCX files for now, friend!');
       return;
     }
 
     setIsUploading(true);
     try {
-      showToast('info', 'Binabasa ni Kabi ang module mo... Wag kang maingay!');
+      showToast('info', 'Kabi is reading your module... Shh, quiet please!');
       const newDoc = await uploadDocumentFile(file, customTitle);
-      showToast('success', `Na-upload na ang "${newDoc.title}"! Handa na para sa review.`);
+      showToast('success', `"${newDoc.title}" uploaded! Ready for review.`);
       setCustomTitle('');
       await onRefreshDocs();
       onSelectDoc(newDoc);
     } catch (err) {
-      showToast('error', err.message || 'May problema sa pag-upload.');
+      showToast('error', err.message || 'Something went wrong with the upload.');
     } finally {
       setIsUploading(false);
     }
@@ -80,21 +80,21 @@ export default function UploadLibraryView({
   const handlePasteSubmit = async (e) => {
     e.preventDefault();
     if (!pasteTitle.trim() || !pasteText.trim()) {
-      showToast('error', 'Pakilagyan ng title at text ang module mo!');
+      showToast('error', 'Please add a title and text for your module!');
       return;
     }
 
     setIsUploading(true);
     try {
-      showToast('info', 'Pinoproseso ang teksto at hinahati sa topics...');
+      showToast('info', 'Processing the text and splitting it into topics...');
       const newDoc = await createDocumentFromText(pasteTitle, pasteText);
-      showToast('success', `Na-save na ang "${newDoc.title}"!`);
+      showToast('success', `"${newDoc.title}" saved!`);
       setPasteTitle('');
       setPasteText('');
       await onRefreshDocs();
       onSelectDoc(newDoc);
     } catch (err) {
-      showToast('error', err.message || 'May problema sa pag-save.');
+      showToast('error', err.message || 'Something went wrong while saving.');
     } finally {
       setIsUploading(false);
     }
@@ -104,19 +104,19 @@ export default function UploadLibraryView({
     setPasteTitle(SAMPLE_MODULE.title);
     setPasteText(SAMPLE_MODULE.text);
     setActiveTab('paste');
-    showToast('info', 'Na-load na ang Sample Handout (Rizal & Propaganda). Pindutin ang "I-save at I-proseso".');
+    showToast('info', 'Sample Handout loaded (Rizal & Propaganda). Click "Save & Process".');
   };
 
   const handleDelete = async (docId, title, e) => {
     e.stopPropagation();
-    if (!window.confirm(`Sigurado ka bang buburahin ang "${title}"?`)) return;
+    if (!window.confirm(`Are you sure you want to delete "${title}"?`)) return;
 
     try {
       await deleteDocument(docId);
-      showToast('success', `Burado na ang "${title}".`);
+      showToast('success', `"${title}" deleted.`);
       onRefreshDocs();
     } catch (err) {
-      showToast('error', 'Hindi nabura ang document.');
+      showToast('error', 'Could not delete the document.');
     }
   };
 
@@ -127,13 +127,13 @@ export default function UploadLibraryView({
         <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="text-center sm:text-left space-y-2 max-w-xl">
             <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md">
-              🦉 Puyat pero Papasa
+              🦉 Sleepy but Passing
             </span>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Aral ngayon, pasa bukas.
+              Study today, pass tomorrow.
             </h1>
             <p className="text-amber-100 text-sm sm:text-base leading-relaxed">
-              I-upload mo na ang handouts, reviewers, o modules mo. Si Kabi na bahala magbuod, gumawa ng flashcards, at maghanda ng exam questions para sa'yo!
+              Upload your handouts, reviewers, or modules. Kabi will summarize them, make flashcards, and prepare exam questions for you!
             </p>
             <div className="pt-2">
               <button
@@ -141,7 +141,7 @@ export default function UploadLibraryView({
                 className="inline-flex items-center gap-2 px-4 py-2 bg-white text-amber-900 hover:bg-amber-50 text-xs sm:text-sm font-bold rounded-xl shadow-md transition transform active:scale-95"
               >
                 <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>Subukan ang Sample Handout (1-Click Demo)</span>
+                <span>Try the Sample Handout (1-Click Demo)</span>
               </button>
             </div>
           </div>
@@ -151,8 +151,8 @@ export default function UploadLibraryView({
             size="xl" 
             message={
               documents.length === 0 
-                ? "Wala ka pang module. Bukas na naman? I-upload mo na yan!" 
-                : "Ayan, may aralin na tayo! Wag nang mag-procrastinate!"
+                ? "No modules yet. Putting it off until tomorrow again? Upload one now!" 
+                : "There we go, we've got something to study! No more procrastinating!"
             }
           />
         </div>
@@ -175,7 +175,7 @@ export default function UploadLibraryView({
             }`}
           >
             <Upload className="w-4 h-4" />
-            <span>Mag-upload ng File (PDF / DOCX)</span>
+            <span>Upload a File (PDF / DOCX)</span>
           </button>
           <button
             onClick={() => setActiveTab('paste')}
@@ -186,7 +186,7 @@ export default function UploadLibraryView({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Mag-paste ng Text o Notes</span>
+            <span>Paste Text or Notes</span>
           </button>
         </div>
 
@@ -196,11 +196,11 @@ export default function UploadLibraryView({
               {/* Optional custom title input */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pangalan ng Module (Optional):
+                  Module Name (optional):
                 </label>
                 <input
                   type="text"
-                  placeholder="Halimbawa: Bio 101 - Cell Biology Chapter 1"
+                  placeholder="Example: Bio 101 - Cell Biology Chapter 1"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
                   className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
@@ -233,17 +233,17 @@ export default function UploadLibraryView({
 
                 <div>
                   <p className="font-bold text-slate-800 text-sm sm:text-base">
-                    I-drag dito ang PDF o Word DOCX file, o mag-browse sa device
+                    Drag a PDF or Word DOCX file here, or browse your device
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Tinatanggap: <span className="font-semibold text-slate-700">PDF (.pdf)</span> at <span className="font-semibold text-slate-700">Word (.docx)</span>
+                    Accepted: <span className="font-semibold text-slate-700">PDF (.pdf)</span> and <span className="font-semibold text-slate-700">Word (.docx)</span>
                   </p>
                 </div>
 
                 {isUploading && (
                   <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 px-4 py-2 rounded-full border border-amber-200 animate-pulse mt-2">
                     <Sparkles className="w-4 h-4 animate-spin" />
-                    <span>Binabasa at hinahati sa mga aralin...</span>
+                    <span>Reading and splitting into lessons...</span>
                   </div>
                 )}
               </div>
@@ -252,11 +252,11 @@ export default function UploadLibraryView({
             <form onSubmit={handlePasteSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pamagat ng Lesson / Notes:
+                  Lesson / Notes Title:
                 </label>
                 <input
                   type="text"
-                  placeholder="Halimbawa: Rizal - Kabanata 1 at 2"
+                  placeholder="Example: Rizal - Chapters 1 and 2"
                   value={pasteTitle}
                   onChange={(e) => setPasteTitle(e.target.value)}
                   className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
@@ -267,15 +267,15 @@ export default function UploadLibraryView({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-slate-700">
-                    Nilalaman o Text ng Module:
+                    Module Content or Text:
                   </label>
                   <span className="text-[11px] text-slate-400">
-                    {pasteText.length} letra • {pasteText.split(/\s+/).filter(Boolean).length} salita
+                    {pasteText.length} characters • {pasteText.split(/\s+/).filter(Boolean).length} words
                   </span>
                 </div>
                 <textarea
                   rows={8}
-                  placeholder="I-paste dito ang handouts, lecture notes, o transcript..."
+                  placeholder="Paste your handouts, lecture notes, or transcript here..."
                   value={pasteText}
                   onChange={(e) => setPasteText(e.target.value)}
                   className="w-full text-xs sm:text-sm p-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-mono"
@@ -289,7 +289,7 @@ export default function UploadLibraryView({
                   onClick={loadSampleHandout}
                   className="px-4 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl transition"
                 >
-                  I-paste ang Sample Handout
+                  Paste the Sample Handout
                 </button>
                 <button
                   type="submit"
@@ -299,12 +299,12 @@ export default function UploadLibraryView({
                   {isUploading ? (
                     <>
                       <Sparkles className="w-4 h-4 animate-spin" />
-                      <span>Pinoproseso...</span>
+                      <span>Processing...</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>I-save at I-proseso</span>
+                      <span>Save & Process</span>
                     </>
                   )}
                 </button>
@@ -319,10 +319,10 @@ export default function UploadLibraryView({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              Ang Aklatan Mo ({documents.length})
+              Your Library ({documents.length})
             </h2>
             <p className="text-xs text-slate-500">
-              Pumili ng module para makita ang buod, mag-flashcards, o mag-quiz.
+              Pick a module to see its summary, study flashcards, or take a quiz.
             </p>
           </div>
         </div>
@@ -332,17 +332,17 @@ export default function UploadLibraryView({
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center justify-center space-y-3">
             <Mascot mood="sleepy" size="lg" />
             <h3 className="font-bold text-slate-800 text-lg">
-              Wala ka pang module. Bukas na naman?
+              No modules yet. Tomorrow again?
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 max-w-md">
-              Huwag mag-cram sa gabi bago ang exam! Mag-upload ng module sa itaas o pindutin ang "Subukan ang Sample Handout".
+              Don't cram the night before the exam! Upload a module above or click "Try the Sample Handout".
             </p>
             <button
               onClick={loadSampleHandout}
               className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-semibold text-xs rounded-xl shadow hover:bg-amber-600 transition"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Mag-load ng Sample Handout</span>
+              <span>Load Sample Handout</span>
             </button>
           </div>
         ) : (
@@ -368,7 +368,7 @@ export default function UploadLibraryView({
 
                     <button
                       onClick={(e) => handleDelete(doc.id, doc.title, e)}
-                      title="Burahin ang module"
+                      title="Delete module"
                       className="text-slate-400 hover:text-rose-600 p-1 rounded-md hover:bg-rose-50 transition"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -396,7 +396,7 @@ export default function UploadLibraryView({
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-amber-600 group-hover:text-amber-700">
-                  <span>Aralin Na</span>
+                  <span>Start Studying</span>
                   <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition" />
                 </div>
               </div>

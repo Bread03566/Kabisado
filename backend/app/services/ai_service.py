@@ -98,8 +98,9 @@ class AIService:
 
         system_prompt = (
             "You are Kabisado, an expert AI study buddy for Filipino students. "
-            "Tagline: 'Aral ngayon, pasa bukas.' "
+            "Tagline: 'Study today, pass tomorrow.' "
             "Tone: You are friendly, relatable, slightly witty, but when explaining academic material, your explanations are strictly accurate, crystal-clear, and serious. "
+            "LANGUAGE: Always write the summary and key terms in English, even if the source text is in another language. "
             "CRITICAL RULE: Base your summary and key terms strictly on the provided text. Do NOT invent facts or hallucinate external information. "
             "Always respond in valid, strict JSON with this exact schema:\n"
             "{\n"
@@ -150,7 +151,8 @@ class AIService:
             "1. Ground cards ONLY on the provided text. Never invent facts.\n"
             "2. Make the 'front' clear and prompt-oriented (either a concept/term or a targeted question).\n"
             "3. Make the 'back' concise, clear, and easy to memorize.\n"
-            "4. Return strict JSON array of flashcard objects matching this exact structure:\n"
+            "4. Write every card in English, even if the source text is in another language.\n"
+            "5. Return strict JSON array of flashcard objects matching this exact structure:\n"
             "[\n"
             '  {\n'
             f'    "topic_id": {json.dumps(topic_id)},\n'
@@ -224,7 +226,8 @@ class AIService:
             "1. Exactly 4 choices per question.\n"
             "2. One unequivocally correct answer; 3 plausible distractors (misconceptions or related terms from the text).\n"
             "3. Grounded explanation that explains why the correct answer is right and why distractors are wrong.\n"
-            "4. Return strict JSON array matching this schema:\n"
+            "4. Write every question, choice, and explanation in English, even if the source text is in another language.\n"
+            "5. Return strict JSON array matching this schema:\n"
             "[\n"
             '  {\n'
             '    "question": "Clear question text?",\n'
@@ -265,7 +268,7 @@ class AIService:
                         "question": str(q["question"]).strip(),
                         "choices": [str(c).strip() for c in q["choices"]],
                         "correct_index": c_idx,
-                        "explanation": str(q.get("explanation", "Batay sa module content.")).strip(),
+                        "explanation": str(q.get("explanation", "Based on the module content.")).strip(),
                         "difficulty": diff,
                         "topic_id": topic_id
                     })
@@ -286,9 +289,9 @@ class AIService:
         selected_text = "\n\n".join(paras[:target_paras]) if paras else text[:800]
 
         summary_body = (
-            f"### Buod para sa: {title}\n\n"
+            f"### Summary of: {title}\n\n"
             f"{selected_text}\n\n"
-            f"> *Paalala ni Kabi: Ang buod na ito ay batay mismo sa mga pangunahing bahagi ng iyong in-upload na module.*"
+            f"> *Note from Kabi: This summary is based directly on the main sections of the module you uploaded.*"
         )
 
         # Extract terms using heuristic "Term is/are/refers to" or colon pattern
@@ -305,8 +308,8 @@ class AIService:
         if not key_terms:
             # Fallback default key terms
             key_terms = [
-                {"term": "Pangunahing Konsepto", "definition": f"Ang pangunahing aralin na tinatalakay sa {title}."},
-                {"term": "Mahalagang Teorya", "definition": "Mga prinsipyo at batayang inilahad sa dokumento."}
+                {"term": "Core Concept", "definition": f"The main lesson discussed in {title}."},
+                {"term": "Key Theory", "definition": "The principles and foundations presented in the document."}
             ]
 
         return {
@@ -321,7 +324,7 @@ class AIService:
             cleaned_term = term.strip(" -:")
             if len(cleaned_term.split()) <= 4 and cleaned_term.lower() not in ["chapter", "module", "lesson"]:
                 cards.append({
-                    "front": f"Ano ang kahulugan ng {cleaned_term}?",
+                    "front": f"What is the meaning of {cleaned_term}?",
                     "back": definition.strip(),
                     "topic_id": topic_id,
                     "card_type": "term"
@@ -334,7 +337,7 @@ class AIService:
             sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if 35 < len(s.strip()) < 180]
             for i, s in enumerate(sentences):
                 cards.append({
-                    "front": f"Ano ang ipinapahayag ng sumusunod na punto sa {topic_title}?",
+                    "front": f"What does this point in {topic_title} state?",
                     "back": s,
                     "topic_id": topic_id,
                     "card_type": "qa"
@@ -344,7 +347,7 @@ class AIService:
 
         if not cards:
             cards = [{
-                "front": f"Ano ang pangunahing layunin ng araling ito ({topic_title})?",
+                "front": f"What is the main goal of this lesson ({topic_title})?",
                 "back": text[:150] + "...",
                 "topic_id": topic_id,
                 "card_type": "qa"
@@ -364,7 +367,7 @@ class AIService:
 
             distractors = [t for t in terms if t != cleaned_term][:3]
             while len(distractors) < 3:
-                distractors.append(f"Maling Konsepto #{len(distractors) + 1}")
+                distractors.append(f"Incorrect Concept #{len(distractors) + 1}")
 
             choices = [cleaned_term] + distractors
             # Keep index 0 as correct, or rotate
@@ -372,10 +375,10 @@ class AIService:
             choices[0], choices[correct_idx] = choices[correct_idx], choices[0]
 
             questions.append({
-                "question": f"Alin sa mga sumusunod ang tumutukoy sa: \"{definition.strip()}\"?",
+                "question": f"Which of the following refers to: \"{definition.strip()}\"?",
                 "choices": choices,
                 "correct_index": correct_idx,
-                "explanation": f"Ayon sa module: Ang {cleaned_term} ay {definition.strip()}",
+                "explanation": f"According to the module: {cleaned_term} is {definition.strip()}",
                 "difficulty": difficulty if difficulty != "mixed" else ("easy" if i % 2 == 0 else "medium"),
                 "topic_id": topic_id
             })
@@ -386,15 +389,15 @@ class AIService:
         # Fallback question if none found
         if not questions:
             questions.append({
-                "question": f"Tungkol saan ang pangunahing aralin sa {topic_title}?",
+                "question": f"What is the main lesson in {topic_title} about?",
                 "choices": [
-                    f"Pag-unawa sa mga konsepto ng {topic_title}",
-                    "Kasaysayan ng Sinaunang Daigdig",
-                    "Teorya ng Quantum Gravity",
-                    "Wala sa mga nabanggit"
+                    f"Understanding the concepts of {topic_title}",
+                    "History of the Ancient World",
+                    "Theory of Quantum Gravity",
+                    "None of the above"
                 ],
                 "correct_index": 0,
-                "explanation": f"Batay sa dokumento, ang araling ito ay nakapokus sa {topic_title}.",
+                "explanation": f"Based on the document, this lesson focuses on {topic_title}.",
                 "difficulty": "easy",
                 "topic_id": topic_id
             })
@@ -420,7 +423,7 @@ class AIService:
         Returns:
         {
           "answer": "...",
-          "citation": "Kabanata X...",
+          "citation": "Chapter X...",
           "found_in_document": true/false
         }
         """
@@ -429,19 +432,20 @@ class AIService:
 
         context_blocks = []
         for t in topics:
-            context_blocks.append(f"--- BAHAGI / TOPIC: {t.get('title', 'Aralin')} ---\n{t.get('content', '')[:6000]}")
+            context_blocks.append(f"--- SECTION / TOPIC: {t.get('title', 'Lesson')} ---\n{t.get('content', '')[:6000]}")
         combined_context = "\n\n".join(context_blocks)
 
         system_prompt = (
             "You are Kabisado, an expert AI tutor for students. "
-            "Tagline: 'Aral ngayon, pasa bukas.' "
+            "Tagline: 'Study today, pass tomorrow.' "
             "Tone: You are friendly, relatable, slightly dramatic like a study buddy, but your academic explanations are 100% accurate, clear, and grounded. "
             "CRITICAL RULES:\n"
             "1. STRICT GROUNDING: Answer the question using ONLY the provided document content. DO NOT invent facts, assume unmentioned details, or bring in external knowledge.\n"
-            "2. CITATION: Explicitly cite the specific section or topic where the information was found (e.g., 'Batay sa Kabanata 2: Ang Pag-usbong ng Kilusang Propaganda').\n"
-            "3. HONESTY / NOT IN MATERIAL: If the answer is NOT present or cannot be inferred directly from the provided text, clearly and politely declare that the information is not in the uploaded material. Refuse to guess (e.g. 'Paumanhin lodi, pero wala sa in-upload mong module ang tungkol dito. Ayokong manghula baka ma-tres ka sa exam!'). In this case, set 'found_in_document' to false.\n"
-            f"4. 'EXPLAIN LIKE I'M NEW' MODE: {'ON - Simplify difficult terminology using intuitive everyday Filipino real-world analogies (e.g., comparing parts of a cell to barangay officials, or algorithms to a recipe) while keeping facts intact.' if explain_like_new else 'OFF - Provide a direct, standard, rigorous academic explanation.'}\n"
-            "5. OUTPUT FORMAT: Respond strictly in valid JSON matching this schema:\n"
+            "2. CITATION: Explicitly cite the specific section or topic where the information was found (e.g., 'Based on Chapter 2: The Rise of the Propaganda Movement').\n"
+            "3. HONESTY / NOT IN MATERIAL: If the answer is NOT present or cannot be inferred directly from the provided text, clearly and politely declare that the information is not in the uploaded material. Refuse to guess (e.g. 'Sorry, friend, but your uploaded module doesn't cover this. I'd rather not guess and risk you getting it wrong on the exam!'). In this case, set 'found_in_document' to false.\n"
+            f"4. 'EXPLAIN LIKE I'M NEW' MODE: {'ON - Simplify difficult terminology using intuitive everyday real-world analogies (e.g., comparing parts of a cell to barangay officials, or algorithms to a recipe) while keeping facts intact.' if explain_like_new else 'OFF - Provide a direct, standard, rigorous academic explanation.'}\n"
+            "5. LANGUAGE: Always answer in English, even if the module or the question is in another language.\n"
+            "6. OUTPUT FORMAT: Respond strictly in valid JSON matching this schema:\n"
             "{\n"
             '  "answer": "Clear explanation in friendly markdown...",\n'
             '  "citation": "Section or topic title (or null if not found)",\n'
@@ -487,7 +491,7 @@ class AIService:
                 s_lower = s.lower()
                 matches = sum(1 for kw in keywords if kw in s_lower)
                 if matches > 0:
-                    matched_sentences.append((matches, s, t.get("title", "Aralin")))
+                    matched_sentences.append((matches, s, t.get("title", "Lesson")))
 
         if matched_sentences:
             matched_sentences.sort(key=lambda x: x[0], reverse=True)
@@ -495,11 +499,11 @@ class AIService:
             best_topic = best_match[2]
             best_snippet = " ".join([m[1] for m in matched_sentences[:2]])
 
-            prefix = "Ito ang simpleng paliwanag para mas madaling ma-gets:\n\n" if explain_like_new else ""
+            prefix = "Here's a simple explanation to make it easier to understand:\n\n" if explain_like_new else ""
             ans_text = (
-                f"{prefix}Ayon sa iyong module:\n\n"
+                f"{prefix}According to your module:\n\n"
                 f"> {best_snippet}\n\n"
-                f"*Pinagkunan: {best_topic}*"
+                f"*Source: {best_topic}*"
             )
             return {
                 "answer": ans_text,
@@ -509,10 +513,10 @@ class AIService:
         else:
             return {
                 "answer": (
-                    f"Pasensya na, lodi! Hinanap ko sa buong module na \"{document_title}\", "
-                    f"pero parang wala roon ang impormasyon tungkol sa iyong tanong. "
-                    f"Ayaw ni Kabi mag-imbento ng sagot baka magkamali ka pa sa exam! "
-                    f"Pakisubukan magtanong tungkol sa mismong mga paksa sa module."
+                    f"Sorry, friend! I searched the whole module \"{document_title}\", "
+                    f"but it doesn't seem to have information about your question. "
+                    f"Kabi doesn't want to make up an answer and have you get it wrong on the exam! "
+                    f"Try asking about the topics covered in the module."
                 ),
                 "citation": None,
                 "found_in_document": False

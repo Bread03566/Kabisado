@@ -27,7 +27,7 @@ class SegmenterService:
         lines = cleaned.split("\n")
         
         sections: List[Dict[str, str]] = []
-        current_title = "Panimula (Introduction / Overview)"
+        current_title = "Introduction / Overview"
         current_paragraphs: List[str] = []
         order = 0
 
@@ -85,7 +85,7 @@ class SegmenterService:
         """Fallback chunker by logical paragraph groups if no headings found."""
         paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
         if not paragraphs:
-            return [{"title": f"{document_title} - Buod", "content": text, "order_index": 0}]
+            return [{"title": f"{document_title} - Overview", "content": text, "order_index": 0}]
 
         chunks: List[Dict[str, str]] = []
         curr_chunk: List[str] = []
@@ -100,7 +100,7 @@ class SegmenterService:
 
             if curr_words >= target_words_per_chunk:
                 chunks.append({
-                    "title": f"Parte {chunk_idx}: Mahahalagang Konsepto",
+                    "title": f"Part {chunk_idx}: Key Concepts",
                     "content": "\n\n".join(curr_chunk),
                     "order_index": chunk_idx - 1
                 })
@@ -114,7 +114,7 @@ class SegmenterService:
                 chunks[-1]["content"] += "\n\n" + "\n\n".join(curr_chunk)
             else:
                 chunks.append({
-                    "title": f"Parte {chunk_idx}: Karagdagang Konsepto" if chunk_idx > 1 else f"{document_title} - Pangunahing Paksa",
+                    "title": f"Part {chunk_idx}: Additional Concepts" if chunk_idx > 1 else f"{document_title} - Main Topic",
                     "content": "\n\n".join(curr_chunk),
                     "order_index": chunk_idx - 1
                 })

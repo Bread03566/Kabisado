@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Backend API para sa Kabisado - AI-Powered Study App (Aral ngayon, pasa bukas)",
+    description="Backend API for Kabisado - AI-Powered Study App (Study today, pass tomorrow)",
     lifespan=lifespan
 )
 
@@ -62,14 +62,14 @@ def health_check():
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "ai_configured": ai_service.is_api_configured(),
-        "tagline": "Aral ngayon, pasa bukas."
+        "tagline": "Study today, pass tomorrow."
     }
 
 @app.get("/")
 def root():
     return {
         "message": "Mabuhay! Welcome to Kabisado API.",
-        "tagline": "Aral ngayon, pasa bukas.",
+        "tagline": "Study today, pass tomorrow.",
         "docs_url": "/docs",
         "health": "/api/health"
     }
@@ -79,7 +79,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": f"Ay, may kaunting topak ang system: {str(exc)}",
-            "message": "Huminga nang malalim. Pwede mong subukan ulit."
+            "detail": f"Oops, the system hit a snag: {str(exc)}",
+            "message": "Take a deep breath. You can try again."
         }
     )

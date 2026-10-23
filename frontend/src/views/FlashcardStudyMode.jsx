@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   RotateCw, 
@@ -80,7 +81,7 @@ export default function FlashcardStudyMode({
       setIsFlipped(false);
       setIsFinished(false);
     } catch {
-      showToast('error', 'Hindi ma-load ang flashcards.');
+      showToast('error', 'Could not load flashcards.');
     } finally {
       setIsLoading(false);
     }
@@ -107,15 +108,15 @@ export default function FlashcardStudyMode({
   const handleGenerateCards = async (count = 8) => {
     setIsGenerating(true);
     try {
-      showToast('info', 'Gumagawa ng flashcards para \'di ka na bumagsak...');
+      showToast('info', 'Making flashcards so you won\'t fail...');
       const newCards = await generateFlashcards(documentId, count, selectedTopicId);
       setCards((prev) => [...newCards, ...prev]);
-      showToast('success', `Nakalikha ng ${newCards.length} bagong flashcards!`);
+      showToast('success', `Created ${newCards.length} new flashcards!`);
       setCurrentIndex(0);
       setIsFlipped(false);
       setIsFinished(false);
     } catch (err) {
-      showToast('error', err.message || 'Bigo sa paglikha ng flashcards.');
+      showToast('error', err.message || 'Failed to create flashcards.');
     } finally {
       setIsGenerating(false);
     }
@@ -143,7 +144,7 @@ export default function FlashcardStudyMode({
     setCurrentIndex(0);
     setIsFlipped(false);
     setIsFinished(false);
-    showToast('info', 'Na-shuffle na ang deck!');
+    showToast('info', 'Deck shuffled!');
   };
 
   const handleRate = async (rating) => {
@@ -174,9 +175,9 @@ export default function FlashcardStudyMode({
       setShowAddModal(false);
       setFormFront('');
       setFormBack('');
-      showToast('success', 'Nai-dagdag ang bagong flashcard!');
+      showToast('success', 'New flashcard added!');
     } catch (err) {
-      showToast('error', 'Hindi naidagdag ang card.');
+      showToast('error', 'Could not add the card.');
     }
   };
 
@@ -195,16 +196,16 @@ export default function FlashcardStudyMode({
       newCards[currentIndex] = updated;
       setCards(newCards);
       setShowEditModal(false);
-      showToast('success', 'Na-update ang flashcard!');
+      showToast('success', 'Flashcard updated!');
     } catch (err) {
-      showToast('error', 'Hindi na-update ang card.');
+      showToast('error', 'Could not update the card.');
     }
   };
 
   const handleDeleteCard = async () => {
     const currentCard = cards[currentIndex];
     if (!currentCard) return;
-    if (!window.confirm('Sigurado ka bang buburahin itong card?')) return;
+    if (!window.confirm('Are you sure you want to delete this card?')) return;
 
     try {
       await deleteFlashcard(currentCard.id);
@@ -214,9 +215,9 @@ export default function FlashcardStudyMode({
         setCurrentIndex(remaining.length - 1);
       }
       setIsFlipped(false);
-      showToast('success', 'Nabura ang flashcard.');
+      showToast('success', 'Flashcard deleted.');
     } catch (err) {
-      showToast('error', 'Bigo sa pagbura ng card.');
+      showToast('error', 'Failed to delete the card.');
     }
   };
 
@@ -248,7 +249,7 @@ export default function FlashcardStudyMode({
               <span>Flashcard Study Mode</span>
             </h1>
             <p className="text-xs text-slate-500">
-              Pindutin ang card o Spacebar para i-flip.
+              Click the card or press Spacebar to flip it.
             </p>
           </div>
         </div>
@@ -260,7 +261,7 @@ export default function FlashcardStudyMode({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold rounded-xl border border-indigo-200 transition disabled:opacity-50"
           >
             <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
-            <span>{isGenerating ? 'Gumagawa...' : 'Mag-generate pa'}</span>
+            <span>{isGenerating ? 'Generating...' : 'Generate More'}</span>
           </button>
 
           <button
@@ -273,7 +274,7 @@ export default function FlashcardStudyMode({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Magdagdag ng Card</span>
+            <span className="hidden sm:inline">Add Card</span>
           </button>
         </div>
       </div>
@@ -282,7 +283,7 @@ export default function FlashcardStudyMode({
         <div className="bg-white rounded-3xl border border-slate-200 p-16 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
           <Mascot mood="studying" size="lg" />
           <p className="text-sm font-bold text-slate-700 animate-pulse">
-            Inihahanda ang flashcards...
+            Preparing flashcards...
           </p>
         </div>
       ) : cards.length === 0 ? (
@@ -291,10 +292,10 @@ export default function FlashcardStudyMode({
           <Mascot mood="sleepy" size="lg" />
           <div className="max-w-md space-y-1">
             <h3 className="font-extrabold text-slate-900 text-lg">
-              Wala pang flashcards ang aralin na ito.
+              This lesson doesn't have any flashcards yet.
             </h3>
             <p className="text-xs text-slate-500">
-              Hayaan si Kabi na gumawa ng memory-enhancing cards para sa'yo batay sa mismong nilalaman ng module!
+              Let Kabi make memory-boosting cards for you, based on the module's actual content!
             </p>
           </div>
           <button
@@ -303,7 +304,7 @@ export default function FlashcardStudyMode({
             className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" />
-            <span>I-generate ang Flashcards gamit ang AI</span>
+            <span>Generate Flashcards with AI</span>
           </button>
         </div>
       ) : isFinished ? (
@@ -312,10 +313,10 @@ export default function FlashcardStudyMode({
           <Mascot mood="happy" size="xl" />
           <div className="space-y-1">
             <h2 className="text-2xl font-black text-slate-900">
-              Galing! Natapos mo ang buong deck! 🦉🎉
+              Nice! You finished the whole deck! 🦉🎉
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
-              Na-review mo lahat ng {cards.length} flashcards. Naka-update na ang spaced repetition intervals mo para sa susunod na review.
+              You reviewed all {cards.length} flashcards. Your spaced repetition intervals have been updated for your next review.
             </p>
           </div>
           <div className="flex items-center gap-3 pt-3">
@@ -327,13 +328,13 @@ export default function FlashcardStudyMode({
               }}
               className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow transition"
             >
-              Ulitin ang Deck
+              Restart Deck
             </button>
             <button
               onClick={onBack}
               className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition"
             >
-              Bumalik sa Module
+              Back to Module
             </button>
           </div>
         </div>
@@ -356,28 +357,28 @@ export default function FlashcardStudyMode({
             <div className="flex items-center gap-1">
               <button
                 onClick={handleShuffle}
-                title="I-shuffle ang cards"
+                title="Shuffle cards"
                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
               >
                 <Shuffle className="w-4 h-4" />
               </button>
               <button
                 onClick={openEditModal}
-                title="I-edit itong card"
+                title="Edit this card"
                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
               >
                 <Edit3 className="w-4 h-4" />
               </button>
               <button
                 onClick={handleDeleteCard}
-                title="Burahin itong card"
+                title="Delete this card"
                 className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setShowFlagModal(true)}
-                title="I-flag itong card"
+                title="Flag this card"
                 className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition"
               >
                 <Flag className="w-4 h-4" />
@@ -399,18 +400,18 @@ export default function FlashcardStudyMode({
               <div className="absolute inset-0 backface-hidden bg-white rounded-3xl border-2 border-slate-200 group-hover:border-indigo-300 p-8 sm:p-12 flex flex-col justify-between shadow-lg shadow-slate-200/50">
                 <div className="flex items-center justify-between text-xs">
                   <span className="px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100">
-                    {currentCard?.card_type === 'qa' ? 'Tanong' : 'Termino'}
+                    {currentCard?.card_type === 'qa' ? 'Question' : 'Term'}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={(e) => speakText(currentCard?.front, e)}
-                      title="Basahin nang malakas (Voice Mode)"
+                      title="Read aloud (Voice Mode)"
                       className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition"
                     >
                       <Volume2 className="w-4 h-4" />
                     </button>
-                    <span className="text-slate-400 font-medium">Pindutin para makita ang sagot</span>
+                    <span className="text-slate-400 font-medium">Click to see the answer</span>
                   </div>
                 </div>
 
@@ -422,7 +423,7 @@ export default function FlashcardStudyMode({
 
                 <div className="flex items-center justify-center text-xs text-indigo-600 font-semibold gap-1 opacity-60 group-hover:opacity-100 transition">
                   <RotateCw className="w-3.5 h-3.5" />
-                  <span>I-flip ang card</span>
+                  <span>Flip card</span>
                 </div>
               </div>
 
@@ -430,18 +431,18 @@ export default function FlashcardStudyMode({
               <div className="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-8 sm:p-12 flex flex-col justify-between shadow-xl">
                 <div className="flex items-center justify-between text-xs">
                   <span className="px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-white/10 text-indigo-200 border border-white/10">
-                    Kasagutan / Kahulugan
+                    Answer / Definition
                   </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={(e) => speakText(currentCard?.back, e)}
-                      title="Basahin nang malakas"
+                      title="Read aloud"
                       className="p-1 rounded-lg hover:bg-white/10 text-indigo-200 hover:text-white transition"
                     >
                       <Volume2 className="w-4 h-4" />
                     </button>
-                    <span className="text-indigo-300/70 font-medium">Pindutin para bumalik</span>
+                    <span className="text-indigo-300/70 font-medium">Click to flip back</span>
                   </div>
                 </div>
 
@@ -462,9 +463,9 @@ export default function FlashcardStudyMode({
           {/* Spaced Repetition Rating Buttons */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
-              <span>Gaano mo ito kabisado?</span>
+              <span>How well do you know this?</span>
               <span className="text-[11px] font-normal text-slate-400 hidden sm:inline">
-                Awtomatikong mag-aadjust ang review interval
+                The review interval adjusts automatically
               </span>
             </div>
 
@@ -473,32 +474,32 @@ export default function FlashcardStudyMode({
                 onClick={() => handleRate('again')}
                 className="flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 transition active:scale-95 group"
               >
-                <span className="font-extrabold text-xs sm:text-sm">Again (Ulitin)</span>
-                <span className="text-[10px] text-rose-600 mt-0.5">'Di pa alam (1d)</span>
+                <span className="font-extrabold text-xs sm:text-sm">Again</span>
+                <span className="text-[10px] text-rose-600 mt-0.5">Don't know it yet (1d)</span>
               </button>
 
               <button
                 onClick={() => handleRate('hard')}
                 className="flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 transition active:scale-95 group"
               >
-                <span className="font-extrabold text-xs sm:text-sm">Hard (Sabaw)</span>
-                <span className="text-[10px] text-amber-600 mt-0.5">Nahirapan konti</span>
+                <span className="font-extrabold text-xs sm:text-sm">Hard</span>
+                <span className="text-[10px] text-amber-600 mt-0.5">Struggled a bit</span>
               </button>
 
               <button
                 onClick={() => handleRate('good')}
                 className="flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 transition active:scale-95 group"
               >
-                <span className="font-extrabold text-xs sm:text-sm">Good (Gets)</span>
-                <span className="text-[10px] text-blue-600 mt-0.5">Tama ang sagot</span>
+                <span className="font-extrabold text-xs sm:text-sm">Good</span>
+                <span className="text-[10px] text-blue-600 mt-0.5">Got it right</span>
               </button>
 
               <button
                 onClick={() => handleRate('easy')}
                 className="flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 transition active:scale-95 group"
               >
-                <span className="font-extrabold text-xs sm:text-sm">Easy (Sisiw)</span>
-                <span className="text-[10px] text-emerald-600 mt-0.5">Kabisado na!</span>
+                <span className="font-extrabold text-xs sm:text-sm">Easy</span>
+                <span className="text-[10px] text-emerald-600 mt-0.5">Mastered it!</span>
               </button>
             </div>
           </div>
@@ -511,7 +512,7 @@ export default function FlashcardStudyMode({
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition disabled:opacity-40"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>Nauna (Previous)</span>
+              <span>Previous</span>
             </button>
 
             <span className="text-xs font-medium text-slate-400">
@@ -522,7 +523,7 @@ export default function FlashcardStudyMode({
               onClick={handleNextCard}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition"
             >
-              <span>{currentIndex === cards.length - 1 ? 'Tapusin' : 'Susunod (Next)'}</span>
+              <span>{currentIndex === cards.length - 1 ? 'Finish' : 'Next'}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -534,12 +535,12 @@ export default function FlashcardStudyMode({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-base">Magdagdag ng Flashcard</h3>
+              <h3 className="font-bold text-slate-900 text-base">Add Flashcard</h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <form onSubmit={handleAddCard} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Uri ng Card:</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Card Type:</label>
                 <div className="flex gap-2">
                   {['term', 'qa'].map((type) => (
                     <button
@@ -552,7 +553,7 @@ export default function FlashcardStudyMode({
                           : 'border-slate-200 text-slate-600'
                       }`}
                     >
-                      {type === 'term' ? 'Termino / Kahulugan' : 'Tanong / Sagot'}
+                      {type === 'term' ? 'Term / Definition' : 'Question / Answer'}
                     </button>
                   ))}
                 </div>
@@ -560,12 +561,12 @@ export default function FlashcardStudyMode({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Harap ng Card (Tanong o Termino):
+                  Card Front (Question or Term):
                 </label>
                 <textarea
                   value={formFront}
                   onChange={(e) => setFormFront(e.target.value)}
-                  placeholder="Halimbawa: Ano ang layunin ng La Solidaridad?"
+                  placeholder="Example: What was the purpose of La Solidaridad?"
                   className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 h-20 resize-none outline-none"
                   required
                 />
@@ -573,12 +574,12 @@ export default function FlashcardStudyMode({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Likod ng Card (Sagot o Kahulugan):
+                  Card Back (Answer or Definition):
                 </label>
                 <textarea
                   value={formBack}
                   onChange={(e) => setFormBack(e.target.value)}
-                  placeholder="Halimbawa: Maging tinig ng mga repormista at ilantad ang mga pang-aabuso sa Pilipinas."
+                  placeholder="Example: To be the voice of the reformists and expose the abuses in the Philippines."
                   className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 h-24 resize-none outline-none"
                   required
                 />
@@ -590,13 +591,13 @@ export default function FlashcardStudyMode({
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl"
                 >
-                  Kanselahin
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl"
                 >
-                  I-save ang Card
+                  Save Card
                 </button>
               </div>
             </form>
@@ -609,13 +610,13 @@ export default function FlashcardStudyMode({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-base">I-edit ang Flashcard</h3>
+              <h3 className="font-bold text-slate-900 text-base">Edit Flashcard</h3>
               <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <form onSubmit={handleEditCard} className="space-y-4 mt-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Harap ng Card:
+                  Card Front:
                 </label>
                 <textarea
                   value={formFront}
@@ -627,7 +628,7 @@ export default function FlashcardStudyMode({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Likod ng Card:
+                  Card Back:
                 </label>
                 <textarea
                   value={formBack}
@@ -643,13 +644,13 @@ export default function FlashcardStudyMode({
                   onClick={() => setShowEditModal(false)}
                   className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl"
                 >
-                  Kanselahin
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl"
                 >
-                  I-update ang Card
+                  Update Card
                 </button>
               </div>
             </form>

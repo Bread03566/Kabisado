@@ -37,7 +37,7 @@ export default function ProgressView({
       const data = await getDashboardStats();
       setStats(data);
     } catch (err) {
-      showToast('error', 'Hindi ma-load ang dashboard stats.');
+      showToast('error', 'Could not load dashboard stats.');
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +48,7 @@ export default function ProgressView({
       <div className="max-w-5xl mx-auto px-4 py-20 text-center flex flex-col items-center justify-center space-y-4">
         <Mascot mood="studying" size="lg" />
         <p className="text-sm font-bold text-slate-700 animate-pulse">
-          Kinakalkula ni Kabi ang iyong progress...
+          Kabi is calculating your progress...
         </p>
       </div>
     );
@@ -62,13 +62,13 @@ export default function ProgressView({
       <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="space-y-2 text-center sm:text-left max-w-xl">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md">
-            📊 Talaan ng Kaalaman
+            📊 Knowledge Tracker
           </span>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Ang Iyong Kabisado Dashboard
+            Your Kabisado Dashboard
           </h1>
           <p className="text-amber-100 text-xs sm:text-sm leading-relaxed">
-            Subaybayan ang iyong study streak, mastery rate bawat paksa, at mga dapat balikang aralin para siguradong pasa sa exam.
+            Track your study streak, your mastery rate for each topic, and the lessons you should revisit so you're sure to pass the exam.
           </p>
         </div>
 
@@ -91,10 +91,10 @@ export default function ProgressView({
               <span className="text-3xl font-black text-slate-900">
                 {stats.streak_days}
               </span>
-              <span className="text-xs font-bold text-slate-500">araw</span>
+              <span className="text-xs font-bold text-slate-500">{stats.streak_days === 1 ? 'day' : 'days'}</span>
             </div>
             <p className="text-[11px] text-amber-600 font-semibold mt-1">
-              {stats.streak_days > 0 ? "🔥 Tuloy-tuloy ang aral!" : "Simulan ang streak ngayon!"}
+              {stats.streak_days > 0 ? "🔥 Keep the streak going!" : "Start your streak today!"}
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -119,12 +119,12 @@ export default function ProgressView({
                 onClick={onStartDueCards}
                 className="text-[11px] text-indigo-600 font-bold hover:underline flex items-center gap-1 mt-1"
               >
-                <span>Aralin na ngayon</span>
+                <span>Study them now</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             ) : (
               <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                ✓ Tapos na ang due cards!
+                ✓ All due cards done!
               </p>
             )}
           </div>
@@ -145,7 +145,7 @@ export default function ProgressView({
               </span>
             </div>
             <p className="text-[11px] text-slate-500 font-semibold mt-1">
-              {stats.total_quizzes_taken} quizzes na-submit
+              {stats.total_quizzes_taken} quizzes submitted
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -163,10 +163,10 @@ export default function ProgressView({
               <span className="text-3xl font-black text-slate-900">
                 {stats.topic_mastery?.length || 0}
               </span>
-              <span className="text-xs font-bold text-slate-500">paksa</span>
+              <span className="text-xs font-bold text-slate-500">topics</span>
             </div>
             <p className="text-[11px] text-slate-500 font-semibold mt-1">
-              {stats.topic_mastery?.filter((t) => t.status === "mastered").length || 0} kabisado na
+              {stats.topic_mastery?.filter((t) => t.status === "mastered").length || 0} mastered
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -185,10 +185,10 @@ export default function ProgressView({
               </div>
               <div>
                 <h2 className="font-extrabold text-slate-900 text-base sm:text-lg">
-                  Mga Mahihinang Paksa (Weak Topics)
+                  Weak Topics
                 </h2>
                 <p className="text-xs text-rose-800">
-                  Dito ka pinakamadalas magkamali o hindi pa nasusubukan. Tutukan natin ito!
+                  These are where you make the most mistakes or haven't been tested yet. Let's focus on them!
                 </p>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function ProgressView({
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition active:scale-95"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Mag-Quiz sa Mahihinang Paksa (Weak-Spot Quiz)</span>
+              <span>Quiz Your Weak Topics (Weak-Spot Quiz)</span>
             </button>
           </div>
 
@@ -211,10 +211,10 @@ export default function ProgressView({
                 <div>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-bold text-rose-700 uppercase tracking-wide text-[10px] bg-rose-100 px-2 py-0.5 rounded-full">
-                      {w.status === "untested" ? "Di pa nasusubukan" : `${w.mastery_percent}% Mastery`}
+                      {w.status === "untested" ? "Not tested yet" : `${w.mastery_percent}% Mastery`}
                     </span>
                     <span className="text-slate-400 text-[11px]">
-                      {w.correct_count}/{w.total_answered} tama
+                      {w.correct_count}/{w.total_answered} correct
                     </span>
                   </div>
                   <h3 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2">
@@ -242,17 +242,17 @@ export default function ProgressView({
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-amber-500" />
-              <span>Antas ng Pagkabisado Bawat Paksa</span>
+              <span>Mastery by Topic</span>
             </h2>
             <p className="text-xs text-slate-500">
-              Computed mastery batay sa iyong quiz attempts at flashcard reviews.
+              Mastery computed from your quiz attempts and flashcard reviews.
             </p>
           </div>
         </div>
 
         {(!stats.topic_mastery || stats.topic_mastery.length === 0) ? (
           <div className="p-8 text-center text-xs text-slate-500">
-            Wala pang datos para sa topics. Mag-take muna ng quiz para makita ang stats!
+            No topic data yet. Take a quiz first to see your stats!
           </div>
         ) : (
           <div className="space-y-4">
@@ -263,20 +263,20 @@ export default function ProgressView({
 
               let badgeColor = "bg-rose-50 text-rose-700 border-rose-200";
               let barColor = "bg-rose-500";
-              let label = "Medyo Sabaw / Reviewhin";
+              let label = "Needs Review";
 
               if (isMastered) {
                 badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
                 barColor = "bg-emerald-500";
-                label = "Kabisado Na!";
+                label = "Mastered!";
               } else if (isReviewing) {
                 badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
                 barColor = "bg-amber-500";
-                label = "Nangangailangan ng Kembot";
+                label = "Needs a Little More Work";
               } else if (isUntested) {
                 badgeColor = "bg-slate-50 text-slate-600 border-slate-200";
                 barColor = "bg-slate-300";
-                label = "Wala pang Quiz";
+                label = "No Quiz Yet";
               }
 
               return (
@@ -295,7 +295,7 @@ export default function ProgressView({
                     </div>
 
                     <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <span>{topic.correct_count} sa {topic.total_answered} tama</span>
+                      <span>{topic.correct_count} of {topic.total_answered} correct</span>
                       <span className="font-bold text-slate-900">{topic.mastery_percent}%</span>
                     </div>
                   </div>
@@ -318,12 +318,12 @@ export default function ProgressView({
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5">
         <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-indigo-500" />
-          <span>Kasaysayan ng mga Pagsusulit (Recent Attempts)</span>
+          <span>Recent Quiz Attempts</span>
         </h2>
 
         {(!stats.quiz_history || stats.quiz_history.length === 0) ? (
           <div className="p-8 text-center text-xs text-slate-500">
-            Wala ka pang nasasagutang quiz. Subukan mo na ang unang pagsusulit sa module mo!
+            You haven't taken any quizzes yet. Try the first quiz on your module!
           </div>
         ) : (
           <div className="space-y-3">
@@ -344,7 +344,7 @@ export default function ProgressView({
                       {att.document_title}
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      {att.completed_at ? new Date(att.completed_at).toLocaleDateString() : 'Kamakailan'} • Antas: {att.difficulty}
+                      {att.completed_at ? new Date(att.completed_at).toLocaleDateString() : 'Recently'} • Difficulty: {att.difficulty}
                     </p>
                   </div>
                 </div>
@@ -353,7 +353,7 @@ export default function ProgressView({
                   <span className="font-bold text-xs text-slate-900 block">
                     {att.score} / {att.total_questions}
                   </span>
-                  <span className="text-[10px] text-slate-400">Marka</span>
+                  <span className="text-[10px] text-slate-400">Score</span>
                 </div>
               </div>
             ))}

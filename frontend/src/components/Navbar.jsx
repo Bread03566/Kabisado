@@ -16,7 +16,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
           <Mascot mood="sleepy" size="sm" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-slate-900 group-hover:text-amber-600 transition">
+              <span translate="no" className="notranslate font-extrabold text-xl tracking-tight text-slate-900 group-hover:text-amber-600 transition">
                 Kabisado
               </span>
               <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 rounded-full border border-amber-200">
@@ -24,7 +24,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
               </span>
             </div>
             <p className="text-[11px] font-medium text-slate-500 italic">
-              "Aral ngayon, pasa bukas."
+              "Study today, pass tomorrow."
             </p>
           </div>
         </div>
@@ -40,7 +40,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Aklatan</span>
+            <span>Library</span>
           </button>
 
           <button
@@ -79,7 +79,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
                 : 'bg-indigo-50 border-indigo-200 text-indigo-800 hover:bg-indigo-100'
             }`}
-            title="Suriin ang AI Engine status"
+            title="Check AI engine status"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden md:inline">
@@ -118,22 +118,22 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
                 )}
                 <div>
                   <p className="font-semibold text-slate-800">
-                    Status: {aiConfigured ? 'Anthropic Claude API Nakakonekta' : 'Grounded Local Engine Aktibo'}
+                    Status: {aiConfigured ? 'Anthropic Claude API Connected' : 'Grounded Local Engine Active'}
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {aiConfigured
-                      ? 'Ginagamit ang Claude 3.5 Sonnet para sa malalimang buod, flashcards, at pagsusuri.'
-                      : 'Naka-set sa grounded NLP mode. Pwede kang magdagdag ng ANTHROPIC_API_KEY sa backend/.env para sa full Claude power!'}
+                      ? 'Using Claude 3.5 Sonnet for in-depth summaries, flashcards, and analysis.'
+                      : 'Running in grounded NLP mode. Add an ANTHROPIC_API_KEY to backend/.env for full Claude power!'}
                   </p>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/80 text-amber-900 text-xs">
-                <p className="font-semibold mb-1">Paano ilagay ang Claude API Key?</p>
+                <p className="font-semibold mb-1">How do I add a Claude API key?</p>
                 <ol className="list-decimal pl-4 space-y-1">
-                  <li>Buksan ang file na <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">backend/.env</code></li>
-                  <li>Ilagay ang iyong key: <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">ANTHROPIC_API_KEY=sk-ant-...</code></li>
-                  <li>I-restart ang backend server kung tumatakbo na.</li>
+                  <li>Open the file <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">backend/.env</code></li>
+                  <li>Add your key: <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">ANTHROPIC_API_KEY=sk-ant-...</code></li>
+                  <li>Restart the backend server if it's already running.</li>
                 </ol>
               </div>
             </div>
@@ -143,7 +143,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
                 onClick={() => setShowKeyInfo(false)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
               >
-                Naiintindihan ko
+                Got it
               </button>
             </div>
           </div>

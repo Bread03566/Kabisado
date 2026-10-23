@@ -83,7 +83,7 @@ export default function QuizMode({
       setQuestions(data);
       resetQuizState();
     } catch {
-      showToast('error', 'Hindi ma-load ang quiz questions.');
+      showToast('error', 'Could not load quiz questions.');
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +100,7 @@ export default function QuizMode({
   const handleGenerateQuestions = async () => {
     setIsGenerating(true);
     try {
-      showToast('info', 'Naghahanda ng pamatay na quiz questions si Kabi...');
+      showToast('info', 'Kabi is preparing some killer quiz questions...');
       const newQuestions = await generateQuiz(
         documentId, 
         targetCount, 
@@ -114,9 +114,9 @@ export default function QuizMode({
         setSecondsRemaining(timerDuration * 60);
       }
 
-      showToast('success', `Nakahanda na ang ${newQuestions.length} tanong para sa'yo!`);
+      showToast('success', `${newQuestions.length} questions are ready for you!`);
     } catch (err) {
-      showToast('error', err.message || 'Bigo sa paggawa ng quiz questions.');
+      showToast('error', err.message || 'Failed to create quiz questions.');
     } finally {
       setIsGenerating(false);
     }
@@ -125,13 +125,13 @@ export default function QuizMode({
   const handleGenerateWeakSpots = async () => {
     setIsGenerating(true);
     try {
-      showToast('info', 'Gumagawa ng Weak-Spot Quiz mula sa mga paksang alanganin...');
+      showToast('info', 'Building a Weak-Spot Quiz from the topics you struggle with...');
       const weakQuestions = await generateWeakSpotQuiz(documentId);
       setQuestions(weakQuestions);
       resetQuizState();
-      showToast('success', 'Nakahanda na ang Weak-Spot Quiz! Banatan na!');
+      showToast('success', 'Your Weak-Spot Quiz is ready! Let\'s go!');
     } catch (err) {
-      showToast('error', err.message || 'Bigo sa paglikha ng weak-spot quiz.');
+      showToast('error', err.message || 'Failed to create the weak-spot quiz.');
     } finally {
       setIsGenerating(false);
       setIsLoading(false);
@@ -184,7 +184,7 @@ export default function QuizMode({
         });
       }
     } catch {
-      showToast('error', 'May problema sa pag-submit ng quiz results.');
+      showToast('error', 'There was a problem submitting your quiz results.');
     } finally {
       setIsSubmitting(false);
     }
@@ -226,7 +226,7 @@ export default function QuizMode({
               <span>{isWeakSpotMode ? 'Weak-Spot Quiz' : isExamMode ? 'Timed Exam Mode ⏱️' : 'Kabisado Quiz Mode'}</span>
             </h1>
             <p className="text-xs text-slate-500">
-              Isang tanong bawat sandali na may agarang grounded feedback.
+              One question at a time, with instant grounded feedback.
             </p>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function QuizMode({
         {questions.length > 0 && !quizResult && (
           <button
             onClick={() => setShowFlagModal(true)}
-            title="I-flag itong tanong"
+            title="Flag this question"
             className="p-2 rounded-xl border border-slate-200 hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition"
           >
             <Flag className="w-4 h-4" />
@@ -258,7 +258,7 @@ export default function QuizMode({
         <div className="bg-white rounded-3xl border border-slate-200 p-16 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
           <Mascot mood="studying" size="lg" />
           <p className="text-sm font-bold text-slate-700 animate-pulse">
-            Inihahanda ang quiz...
+            Preparing the quiz...
           </p>
         </div>
       ) : questions.length === 0 ? (
@@ -267,17 +267,17 @@ export default function QuizMode({
           <Mascot mood="sleepy" size="lg" />
           <div className="max-w-md space-y-1">
             <h2 className="text-xl font-extrabold text-slate-900">
-              Pumili ng Setting para sa Pagsusulit
+              Choose Your Quiz Settings
             </h2>
             <p className="text-xs text-slate-500">
-              Sanayin ang sarili bago ang totoong exam:
+              Practice before the real exam:
             </p>
           </div>
 
           <div className="w-full max-w-sm space-y-4 text-left">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Bilang ng mga Tanong:
+                Number of Questions:
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[5, 10, 15].map((cnt) => (
@@ -291,7 +291,7 @@ export default function QuizMode({
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    {cnt} Tanong
+                    {cnt} Questions
                   </button>
                 ))}
               </div>
@@ -299,7 +299,7 @@ export default function QuizMode({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Antas ng Hirap (Difficulty):
+                Difficulty:
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[
@@ -331,7 +331,7 @@ export default function QuizMode({
                   <Timer className="w-5 h-5 text-amber-600" />
                   <div>
                     <span className="font-bold text-xs text-slate-900 block">Exam Mode with Timer</span>
-                    <span className="text-[10px] text-slate-500">May countdown timer na susubok sa bilis mo</span>
+                    <span className="text-[10px] text-slate-500">A countdown timer that tests your speed</span>
                   </div>
                 </div>
                 <input
@@ -344,7 +344,7 @@ export default function QuizMode({
 
               {isExamMode && (
                 <div className="mt-2.5 flex items-center justify-between text-xs px-1">
-                  <span className="font-semibold text-slate-600">Oras ng Exam:</span>
+                  <span className="font-semibold text-slate-600">Exam Time:</span>
                   <div className="flex gap-1.5">
                     {[5, 10, 15].map((mins) => (
                       <button
@@ -373,7 +373,7 @@ export default function QuizMode({
               className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-              <span>{isGenerating ? 'Gumagawa ng Tanong...' : 'Simulan ang Pagsusulit'}</span>
+              <span>{isGenerating ? 'Generating Questions...' : 'Start Quiz'}</span>
             </button>
 
             <button
@@ -382,7 +382,7 @@ export default function QuizMode({
               className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-              <span>Subukan ang Weak-Spot Quiz</span>
+              <span>Try the Weak-Spot Quiz</span>
             </button>
           </div>
         </div>
@@ -403,7 +403,7 @@ export default function QuizMode({
                 {quizResult.score} / {quizResult.total_questions}
               </h2>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                {quizResult.percentage}% Marka
+                {quizResult.percentage}% Score
               </p>
             </div>
 
@@ -417,7 +417,7 @@ export default function QuizMode({
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span>Ulitin ang Quiz</span>
+                <span>Retake Quiz</span>
               </button>
 
               <button
@@ -425,14 +425,14 @@ export default function QuizMode({
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs sm:text-sm rounded-xl border border-indigo-200 transition"
               >
                 <BrainCircuit className="w-4 h-4" />
-                <span>Mag-review gamit ang Flashcards</span>
+                <span>Review with Flashcards</span>
               </button>
 
               <button
                 onClick={onBack}
                 className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition"
               >
-                Bumalik sa Module
+                Back to Module
               </button>
             </div>
           </div>
@@ -441,7 +441,7 @@ export default function QuizMode({
           <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
             <h3 className="font-bold text-slate-900 text-base sm:text-lg flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-500" />
-              <span>Pagsusuri ng Bawat Tanong ({quizResult.results.length})</span>
+              <span>Question-by-Question Review ({quizResult.results.length})</span>
             </h3>
 
             <div className="space-y-4">
@@ -461,27 +461,27 @@ export default function QuizMode({
                     {item.is_correct ? (
                       <span className="shrink-0 flex items-center gap-1 text-emerald-700 font-bold text-xs bg-emerald-100 px-2.5 py-1 rounded-full">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Tama</span>
+                        <span>Correct</span>
                       </span>
                     ) : (
                       <span className="shrink-0 flex items-center gap-1 text-rose-700 font-bold text-xs bg-rose-100 px-2.5 py-1 rounded-full">
                         <XCircle className="w-3.5 h-3.5" />
-                        <span>Mali</span>
+                        <span>Wrong</span>
                       </span>
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                      <span className="text-[11px] font-bold text-slate-400 block mb-0.5">Sagot mo:</span>
+                      <span className="text-[11px] font-bold text-slate-400 block mb-0.5">Your answer:</span>
                       <span className={item.is_correct ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold'}>
-                        {item.selected_index >= 0 ? item.choices[item.selected_index] : 'Walang sagot (Timeout)'}
+                        {item.selected_index >= 0 ? item.choices[item.selected_index] : 'No answer (Timeout)'}
                       </span>
                     </div>
 
                     {!item.is_correct && (
                       <div className="p-2.5 rounded-xl bg-white border border-emerald-300">
-                        <span className="text-[11px] font-bold text-emerald-600 block mb-0.5">Tamang sagot:</span>
+                        <span className="text-[11px] font-bold text-emerald-600 block mb-0.5">Correct answer:</span>
                         <span className="text-emerald-800 font-bold">
                           {item.choices[item.correct_index]}
                         </span>
@@ -490,7 +490,7 @@ export default function QuizMode({
                   </div>
 
                   <div className="p-3 rounded-xl bg-white/80 border border-slate-200 text-xs text-slate-600 leading-relaxed">
-                    <span className="font-bold text-slate-800 block mb-0.5">Paliwanag ni Kabi:</span>
+                    <span className="font-bold text-slate-800 block mb-0.5">Kabi's Explanation:</span>
                     {item.explanation}
                   </div>
                 </div>
@@ -504,12 +504,12 @@ export default function QuizMode({
           {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-600">
-              <span>Tanong {currentIndex + 1} ng {questions.length}</span>
+              <span>Question {currentIndex + 1} of {questions.length}</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => speakQuestion(currentQ?.question_text)}
-                  title="Basahin nang malakas ang tanong"
+                  title="Read the question aloud"
                   className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                 >
                   <Volume2 className="w-4 h-4" />
@@ -534,11 +534,11 @@ export default function QuizMode({
           <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md space-y-6">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Pumili ng isang tamang sagot
+                Choose one correct answer
               </span>
               {currentQ?.topic_title && (
                 <span className="truncate max-w-[200px]">
-                  Paksa: {currentQ.topic_title}
+                  Topic: {currentQ.topic_title}
                 </span>
               )}
             </div>
@@ -606,7 +606,7 @@ export default function QuizMode({
               <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-200 space-y-1.5">
                 <div className="flex items-center gap-2 font-bold text-xs text-slate-900">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>Paliwanag ni Kabi:</span>
+                  <span>Kabi's Explanation:</span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
                   {currentQ?.explanation}
@@ -622,7 +622,7 @@ export default function QuizMode({
               disabled={!hasAnsweredCurrent}
               className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition disabled:opacity-40"
             >
-              <span>{currentIndex === questions.length - 1 ? 'Tingnan ang Score Report' : 'Susunod na Tanong'}</span>
+              <span>{currentIndex === questions.length - 1 ? 'View Score Report' : 'Next Question'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

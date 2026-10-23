@@ -38,7 +38,7 @@ async def generate_quiz_questions(
     else:
         topics_to_process = db.query(Topic).filter(Topic.document_id == doc.id).order_by(Topic.order_index).all()
         if not topics_to_process:
-            topic = Topic(document_id=doc.id, title="Pangunahing Paksa", content=doc.raw_text, order_index=0)
+            topic = Topic(document_id=doc.id, title="Main Topic", content=doc.raw_text, order_index=0)
             db.add(topic)
             db.commit()
             db.refresh(topic)
@@ -106,7 +106,7 @@ async def generate_weak_spot_quiz(
 
     topics = db.query(Topic).filter(Topic.document_id == doc.id).all()
     if not topics:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Walang topics ang document na ito.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This document has no topics.")
 
     # Calculate mastery per topic
     topic_scores = []
@@ -217,7 +217,7 @@ def submit_quiz_attempt(
     """
     total = len(payload.answers)
     if total == 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Walang sagot na na-submit!")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No answers were submitted!")
 
     score = 0
     results_detail: List[QuestionResultDetail] = []
@@ -271,22 +271,22 @@ def submit_quiz_attempt(
 
     pct = round((score / total) * 100, 1) if total > 0 else 0.0
 
-    # Funny Taglish roast / praise based on score
+    # Funny roast / praise based on score
     if pct == 100:
-        grade = "Perpekto! 100%"
-        roast = "Hala siya! Dean's Lister yarn?! Walang mintis! Kabisado mo na talaga 'tong module!"
+        grade = "Perfect! 100%"
+        roast = "Whoa! Dean's Lister material?! Not a single miss! You've truly mastered this module!"
     elif pct >= 80:
-        grade = "Pasado! Galing!"
-        roast = "Solid, lodi! Konting kembot na lang bago mag-exam, sigurado nang mataas marka mo!"
+        grade = "Passed! Great job!"
+        roast = "Solid, friend! Just a little more polish before the exam and you're sure to score high!"
     elif pct >= 60:
-        grade = "Pasado pero muntik na!"
-        roast = "Pasa pa rin naman, pero baka mamaya kabahan ka sa actual exam. Silipin yung mga namali mo!"
+        grade = "Passed, but barely!"
+        roast = "Still a pass, but you might get nervous on the real exam. Take a look at the ones you missed!"
     elif pct >= 40:
-        grade = "Medyo sabaw..."
-        roast = "Inantok ka ba o nag-scroll sa TikTok habang nag-aaral? Balikan natin yung mga flashcards!"
+        grade = "A bit foggy..."
+        roast = "Were you sleepy, or scrolling TikTok while studying? Let's go back to those flashcards!"
     else:
-        grade = "Bagsak, lods..."
-        roast = "Tulog muna 15 minutes o uminom ng kape. Wag susuko, aral ulit tayo ngayon para pasa bukas!"
+        grade = "Failed, friend..."
+        roast = "Take a 15-minute nap or grab a coffee. Don't give up, let's study again today so you pass tomorrow!"
 
     return QuizResultResponse(
         attempt_id=attempt.id,

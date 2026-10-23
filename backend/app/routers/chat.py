@@ -36,7 +36,7 @@ async def ask_kabisado(
     if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Hindi mahanap ang dokumento."
+            detail="Document not found."
         )
 
     topics_data = [

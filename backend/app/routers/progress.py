@@ -115,11 +115,11 @@ def get_dashboard_stats(
         if total_ans == 0:
             status_label = "untested"
         elif mastery_pct >= 80:
-            status_label = "mastered"  # Kabisado na
+            status_label = "mastered"
         elif mastery_pct >= 60:
-            status_label = "reviewing" # Medyo alam pero kailangan pa ng review
+            status_label = "reviewing" # Partly known, still needs review
         else:
-            status_label = "weak"      # Sabaw / weak spot
+            status_label = "weak"      # Weak spot
 
         item = {
             "topic_id": t.id,
@@ -150,16 +150,16 @@ def get_dashboard_stats(
     # 6. Funny Motivational Roast / Praise for Dashboard
     if streak >= 3 and overall_accuracy >= 80:
         mascot_mood = "happy"
-        streak_message = f"Solid! {streak} araw na streak at {overall_accuracy}% accuracy! Hindi ka na tatamaan ng tres niyan!"
+        streak_message = f"Solid! A {streak}-day streak and {overall_accuracy}% accuracy! No failing grades for you!"
     elif streak > 0:
         mascot_mood = "studying"
-        streak_message = f"Tuloy-tuloy lang! Day {streak} na ng review. Wag hihinto para di makalimutan!"
+        streak_message = f"Keep it up! Day {streak} of reviewing. Don't stop, so you don't forget!"
     elif cards_due_count > 0:
         mascot_mood = "sleepy"
-        streak_message = f"May {cards_due_count} flashcards kang dapat aralin ngayon. Tara na bago pa antukin!"
+        streak_message = f"You have {cards_due_count} flashcards to study today. Let's go before you get sleepy!"
     else:
         mascot_mood = "sleepy"
-        streak_message = "Simulan na nating mag-quiz o mag-flashcards para gumalaw ang streak mo!"
+        streak_message = "Let's start a quiz or some flashcards to get your streak going!"
 
     return {
         "streak_days": streak,

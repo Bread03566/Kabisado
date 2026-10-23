@@ -23,7 +23,7 @@ async def summarize_document(
     if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Wala rito yung document, lodi!"
+            detail="That document isn't here, friend!"
         )
 
     # If summarizing a specific topic
@@ -32,7 +32,7 @@ async def summarize_document(
         if not topic:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Hindi mahanap ang specific topic na ito sa document."
+                detail="Could not find this specific topic in the document."
             )
         ai_res = await ai_service.generate_summary(
             document_title=f"{doc.title} - {topic.title}",

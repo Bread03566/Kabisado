@@ -27,9 +27,9 @@ export default function ChatView({
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Mabuhay! Ako si Kabi 🦉. Magtanong ka lang tungkol sa **"${documentTitle}"**. ` +
-               `Ipapaliwanag ko ang mga nakakalitong bahagi nang grounded at may citation sa mismong section. ` +
-               `Kung wala sa module ang sagot, sasabihin ko sa'yo agad para hindi tayo manghula!`,
+      content: `Hi! I'm Kabi 🦉. Ask me anything about **"${documentTitle}"**. ` +
+               `I'll explain the confusing parts, grounded in the material and citing the exact section. ` +
+               `If the answer isn't in the module, I'll tell you right away so we don't have to guess!`,
       citation: null,
       found_in_document: true,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -85,7 +85,7 @@ export default function ChatView({
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      showToast('error', err.message || 'Bigo sa paghingi ng sagot kay Kabi.');
+      showToast('error', err.message || 'Could not get an answer from Kabi.');
     } finally {
       setIsSending(false);
     }
@@ -95,7 +95,7 @@ export default function ChatView({
   const handleToggleVoiceInput = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      showToast('error', 'Hindi pa suportado ang Speech Recognition sa browser na ito.');
+      showToast('error', 'Speech recognition isn\'t supported in this browser yet.');
       return;
     }
 
@@ -106,13 +106,13 @@ export default function ChatView({
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = 'tl-PH'; // Tagalog/Filipino or English
+      recognition.lang = 'en-US';
       recognition.continuous = false;
       recognition.interimResults = false;
 
       recognition.onstart = () => {
         setIsListening(true);
-        showToast('info', 'Makinig si Kabi... Magsalita na, lodi!');
+        showToast('info', 'Kabi is listening... Go ahead and speak!');
       };
 
       recognition.onresult = (event) => {
@@ -138,7 +138,7 @@ export default function ChatView({
   // Text-to-Speech via Web Speech API (Phase 4)
   const speakText = (text) => {
     if (!window.speechSynthesis) {
-      showToast('error', 'Hindi suportado ang boses sa browser na ito.');
+      showToast('error', 'Voice isn\'t supported in this browser.');
       return;
     }
 
@@ -162,10 +162,10 @@ export default function ChatView({
   };
 
   const samplePrompts = [
-    "Ano ang pinakamahalagang aral sa module?",
-    "Bakit mahalaga ang mga kaganapang ito?",
-    "Paano ko maipapaliwanag ito gamit ang sarili kong salita?",
-    "Ano ang mga posibleng lumabas sa exam tungkol dito?"
+    "What's the most important lesson in this module?",
+    "Why are these events important?",
+    "How can I explain this in my own words?",
+    "What might come up on the exam about this?"
   ];
 
   return (
@@ -185,7 +185,7 @@ export default function ChatView({
               <span>Ask Kabisado (Explainer Chat)</span>
             </h1>
             <p className="text-xs text-slate-500 truncate max-w-xs sm:max-w-md">
-              Aralin: {documentTitle}
+              Lesson: {documentTitle}
             </p>
           </div>
         </div>
@@ -245,7 +245,7 @@ export default function ChatView({
 
                     <button
                       onClick={() => speakText(m.content)}
-                      title="Basahin nang malakas (Voice Mode)"
+                      title="Read aloud (Voice Mode)"
                       className="text-slate-400 hover:text-amber-600 p-1 rounded-md transition"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
@@ -266,7 +266,7 @@ export default function ChatView({
             <Mascot mood="studying" size="sm" />
             <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl text-xs text-slate-500 flex items-center gap-2 shadow-xs">
               <Sparkles className="w-4 h-4 text-amber-500 animate-spin" />
-              <span>Hinanap ni Kabi ang sagot sa module...</span>
+              <span>Kabi is searching the module for the answer...</span>
             </div>
           </div>
         )}
@@ -277,7 +277,7 @@ export default function ChatView({
       {/* Sample Prompt Suggestions */}
       {messages.length <= 2 && (
         <div className="py-2 flex items-center gap-2 overflow-x-auto text-[11px]">
-          <span className="font-bold text-slate-400 shrink-0">Subukan:</span>
+          <span className="font-bold text-slate-400 shrink-0">Try:</span>
           {samplePrompts.map((p, idx) => (
             <button
               key={idx}
@@ -303,7 +303,7 @@ export default function ChatView({
           <button
             type="button"
             onClick={handleToggleVoiceInput}
-            title={isListening ? "Huminga muna (Stop Listening)" : "Magsalita gamit ang boses (Voice Input)"}
+            title={isListening ? "Stop Listening" : "Speak with your voice (Voice Input)"}
             className={`p-2.5 rounded-xl transition ${
               isListening
                 ? 'bg-rose-500 text-white animate-pulse'
@@ -315,7 +315,7 @@ export default function ChatView({
 
           <input
             type="text"
-            placeholder={isListening ? "Nagsasalita ka... Nakikinig si Kabi..." : "Magtanong tungkol sa module na ito..."}
+            placeholder={isListening ? "You're speaking... Kabi is listening..." : "Ask about this module..."}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             disabled={isSending}

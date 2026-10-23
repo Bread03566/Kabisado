@@ -36,41 +36,41 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
       if (day === 1) {
         daysPlan.push({
           day: 1,
-          title: "Panimula at Pagbuo ng Foundation",
+          title: "Introduction & Building the Foundation",
           tasks: [
-            "Basahin ang Detalyadong Buod ng buong module.",
-            "Kabisaduhin ang unang set ng Key Terms.",
-            `Mag-laan ng ${hoursPerDay} oras sa pag-unawa ng mga pangunahing konsepto.`
+            "Read the Detailed Summary of the whole module.",
+            "Memorize the first set of Key Terms.",
+            `Spend ${hoursPerDay} hour${hoursPerDay > 1 ? 's' : ''} understanding the core concepts.`
           ]
         });
       } else if (day === daysLeft) {
         daysPlan.push({
           day: daysLeft,
-          title: "Huling Paghahanda & Pahinga (Exam Eve)",
+          title: "Final Prep & Rest (Exam Eve)",
           tasks: [
-            "Mabilisan (Brief) summary review na lang.",
-            "Reviewhin ang mga na-flag mong mahihirap na flashcards.",
-            "Matulog nang maaga! Wag nang mag-puyat para presko ang utak bukas."
+            "Just do a quick review of the Brief summary.",
+            "Review the difficult flashcards you flagged.",
+            "Sleep early! Don't stay up late so your mind is fresh tomorrow."
           ]
         });
       } else if (day === daysLeft - 1) {
         daysPlan.push({
           day: day,
-          title: "Mock Exam at Weak-Spot Drill",
+          title: "Mock Exam & Weak-Spot Drill",
           tasks: [
-            "Kumuha ng Weak-Spot Quiz para sa mga paksang alanganin.",
-            "Subukan ang Timed Exam Mode para masanay sa bilis.",
-            "I-review ang mga paliwanag sa bawat maling sagot."
+            "Take a Weak-Spot Quiz on the topics you're unsure about.",
+            "Try Timed Exam Mode to get used to the pace.",
+            "Review the explanation for every wrong answer."
           ]
         });
       } else {
         daysPlan.push({
           day: day,
-          title: `Malalimang Aral - Araw ${day}`,
+          title: `Deep Study - Day ${day}`,
           tasks: [
-            "I-clear ang Due Flashcards sa Spaced Repetition queue.",
-            "Subukan ang 10-item Quiz na may Medium to Hard difficulty.",
-            "Gamitin ang 'Ask Kabisado' chat para linawin ang mga di maintindihan."
+            "Clear the Due Flashcards in the Spaced Repetition queue.",
+            "Try a 10-item Quiz at Medium to Hard difficulty.",
+            "Use the 'Ask Kabisado' chat to clear up anything confusing."
           ]
         });
       }
@@ -94,10 +94,10 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
             </div>
             <div>
               <h2 className="font-extrabold text-slate-900 text-lg">
-                Study Plan ayon sa Araw ng Exam 📅
+                Study Plan by Exam Date 📅
               </h2>
               <p className="text-xs text-slate-500">
-                Awtomatikong gagawa si Kabi ng iskedyul para hindi ka mag-cram!
+                Kabi will build a schedule for you so you don't have to cram!
               </p>
             </div>
           </div>
@@ -111,13 +111,13 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
             <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
               <Mascot mood="studying" size="sm" />
               <p className="text-xs text-amber-900 font-medium">
-                Piliin kung kailan ang exam para ma-compute natin kung ilang araw at oras ang dapat mong ilaan bawat paksa.
+                Pick your exam date so we can work out how many days and hours to spend on each topic.
               </p>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Kailan ang iyong Exam Date?
+                When is your exam?
               </label>
               <input
                 type="date"
@@ -130,7 +130,7 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Ilang oras ang kaya mong aralin bawat araw?
+                How many hours can you study each day?
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[1, 2, 3, 4].map((hr) => (
@@ -144,7 +144,7 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
                         : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    {hr} Oras / araw
+                    {hr} {hr === 1 ? 'hour' : 'hours'} / day
                   </button>
                 ))}
               </div>
@@ -156,14 +156,14 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
                 onClick={onClose}
                 className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl"
               >
-                Kanselahin
+                Cancel
               </button>
               <button
                 type="submit"
                 className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Gumawa ng Study Plan</span>
+                <span>Create Study Plan</span>
               </button>
             </div>
           </form>
@@ -175,9 +175,9 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
                 <span className="text-[11px] font-bold uppercase tracking-wider text-amber-100">
                   Target Exam
                 </span>
-                <h3 className="text-2xl font-black">{plan.daysLeft} Araw Na Lang!</h3>
+                <h3 className="text-2xl font-black">{plan.daysLeft} {plan.daysLeft === 1 ? 'Day' : 'Days'} Left!</h3>
                 <p className="text-xs text-amber-100 mt-0.5">
-                  Kabuuang {plan.totalHours} oras ng aral ({plan.hoursPerDay} oras/araw)
+                  {plan.totalHours} total study hours ({plan.hoursPerDay} hrs/day)
                 </p>
               </div>
               <Mascot mood="happy" size="md" />
@@ -219,14 +219,14 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
                 onClick={() => setPlan(null)}
                 className="text-xs font-semibold text-slate-500 hover:text-slate-800"
               >
-                ← I-adjust ang Petsa / Oras
+                ← Adjust Date / Hours
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow transition"
               >
-                Simulan ang Araw 1!
+                Start Day 1!
               </button>
             </div>
           </div>

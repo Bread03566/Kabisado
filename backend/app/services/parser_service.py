@@ -13,7 +13,7 @@ class ParserService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Hindi mabuksan yung PDF mo, lodi! Baka corrupted o may password: {str(e)}"
+                detail=f"Couldn't open your PDF, friend! It may be corrupted or password-protected: {str(e)}"
             )
 
         extracted_text_list = []
@@ -28,7 +28,7 @@ class ParserService:
         if not full_text or len(full_text) < 30:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ay, parang blangko o na-scan lang na picture yung PDF mo! Walang mababasang text si Kabi. Paki-check naman kung selectable yung text."
+                detail="Hmm, your PDF looks blank or like a scanned image! Kabi can't find any text to read. Please check that the text is selectable."
             )
 
         return full_text
@@ -42,7 +42,7 @@ class ParserService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ayaw mabasa yung Word docx file: {str(e)}"
+                detail=f"Couldn't read the Word DOCX file: {str(e)}"
             )
 
         text_parts = []
@@ -63,7 +63,7 @@ class ParserService:
         if not full_text or len(full_text) < 30:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Walang text na nakuha sa DOCX file mo! Baka puro screenshot o walang laman?"
+                detail="No text could be extracted from your DOCX file! Maybe it's all screenshots, or empty?"
             )
 
         return full_text
@@ -75,7 +75,7 @@ class ParserService:
         if len(cleaned) < 30:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Napakaliit naman niyan, lodi! Mag-paste ng kahit ilang pangungusap man lang para may ma-aral tayo."
+                detail="That's way too short, friend! Paste at least a few sentences so we have something to study."
             )
         return cleaned
 

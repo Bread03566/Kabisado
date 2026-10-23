@@ -61,7 +61,7 @@ export default function DocumentView({
         setKeyTerms(data.key_terms);
       }
     } catch (err) {
-      showToast('error', err.message || 'Hindi ma-load ang document.');
+      showToast('error', err.message || 'Could not load the document.');
     } finally {
       setIsLoading(false);
     }
@@ -70,14 +70,14 @@ export default function DocumentView({
   const handleGenerateSummary = async (length = summaryLength) => {
     setIsSummarizing(true);
     try {
-      showToast('info', 'Binubuod ni Kabi ang aralin... Sandali lang!');
+      showToast('info', 'Kabi is summarizing the lesson... Just a moment!');
       const res = await summarizeDocument(documentId, length);
       setCurrentSummary(res.summary);
       setKeyTerms(res.key_terms || []);
       setSummaryLength(length);
-      showToast('success', 'Handa na ang buod at key terms!');
+      showToast('success', 'Summary and key terms are ready!');
     } catch (err) {
-      showToast('error', err.message || 'Bigo sa pagbuod.');
+      showToast('error', err.message || 'Summarizing failed.');
     } finally {
       setIsSummarizing(false);
     }
@@ -88,7 +88,7 @@ export default function DocumentView({
       <div className="max-w-5xl mx-auto px-4 py-20 text-center flex flex-col items-center justify-center space-y-4">
         <Mascot mood="studying" size="lg" />
         <p className="text-sm font-semibold text-slate-700 animate-pulse">
-          Binubuklat ni Kabi ang module mo...
+          Kabi is flipping through your module...
         </p>
       </div>
     );
@@ -97,12 +97,12 @@ export default function DocumentView({
   if (!doc) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-        <p className="text-slate-600">Hindi mahanap ang dokumento.</p>
+        <p className="text-slate-600">Document not found.</p>
         <button
           onClick={onBack}
           className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-semibold"
         >
-          Bumalik sa Aklatan
+          Back to Library
         </button>
       </div>
     );
@@ -116,7 +116,7 @@ export default function DocumentView({
           <button
             onClick={onBack}
             className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition"
-            title="Bumalik sa Aklatan"
+            title="Back to Library"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -129,7 +129,7 @@ export default function DocumentView({
                 {doc.file_type}
               </span>
               <span className="text-xs text-slate-400">
-                {doc.topics?.length || 0} Topics • {doc.raw_text?.split(/\s+/).filter(Boolean).length || 0} Salita
+                {doc.topics?.length || 0} Topics • {doc.raw_text?.split(/\s+/).filter(Boolean).length || 0} Words
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">
@@ -185,7 +185,7 @@ export default function DocumentView({
           }`}
         >
           <BookMarked className="w-4 h-4" />
-          <span>Buod & Key Terms</span>
+          <span>Summary & Key Terms</span>
         </button>
         <button
           onClick={() => setActiveTab('topics')}
@@ -196,7 +196,7 @@ export default function DocumentView({
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span>Mga Bahagi / Topics ({doc.topics?.length || 0})</span>
+          <span>Sections / Topics ({doc.topics?.length || 0})</span>
         </button>
         <button
           onClick={() => setActiveTab('chat')}
@@ -218,12 +218,12 @@ export default function DocumentView({
           {/* Summary Control Bar */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-700">Haba ng Buod:</span>
+              <span className="text-xs font-bold text-slate-700">Summary Length:</span>
               <div className="inline-flex bg-slate-100 p-1 rounded-xl">
                 {[
-                  { id: 'brief', label: 'Mabilisan (Brief)' },
-                  { id: 'standard', label: 'Standard (Sapat)' },
-                  { id: 'detailed', label: 'Detalyado (Detailed)' },
+                  { id: 'brief', label: 'Brief' },
+                  { id: 'standard', label: 'Standard' },
+                  { id: 'detailed', label: 'Detailed' },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -249,7 +249,7 @@ export default function DocumentView({
               className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSummarizing ? 'animate-spin' : ''}`} />
-              <span>{isSummarizing ? 'Gumagawa ng Buod...' : 'I-regenerate ang Buod'}</span>
+              <span>{isSummarizing ? 'Generating Summary...' : 'Regenerate Summary'}</span>
             </button>
           </div>
 
@@ -258,10 +258,10 @@ export default function DocumentView({
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center flex flex-col items-center justify-center space-y-3">
               <Mascot mood="studying" size="lg" />
               <p className="text-sm font-bold text-slate-800">
-                Binubuod ni Kabi ang aralin...
+                Kabi is summarizing the lesson...
               </p>
               <p className="text-xs text-slate-500 max-w-sm">
-                Hinahanap ang pinakamahahalagang konsepto para mabilis mong makabisado!
+                Finding the most important concepts so you can master them fast!
               </p>
             </div>
           ) : !currentSummary ? (
@@ -270,10 +270,10 @@ export default function DocumentView({
               <Mascot mood="sleepy" size="md" />
               <div>
                 <h3 className="font-bold text-slate-800 text-base">
-                  Wala pang buod ang module na ito.
+                  This module doesn't have a summary yet.
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Pindutin ang button sa ibaba para ipabuod kay Kabi ang mahahalagang bahagi.
+                  Click the button below to have Kabi summarize the key parts.
                 </p>
               </div>
               <button
@@ -281,7 +281,7 @@ export default function DocumentView({
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md transition"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Gumawa ng Buod & Key Terms</span>
+                <span>Generate Summary & Key Terms</span>
               </button>
             </div>
           ) : (
@@ -291,7 +291,7 @@ export default function DocumentView({
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base sm:text-lg">
                     <FileText className="w-5 h-5 text-amber-500" />
-                    <span>Buod ng Aralin</span>
+                    <span>Lesson Summary</span>
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 capitalize">
                     {summaryLength}
@@ -308,10 +308,10 @@ export default function DocumentView({
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-4">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base sm:text-lg">
                     <Sparkles className="w-5 h-5 text-indigo-500" />
-                    <span>Mga Mahahalagang Termino (Key Terms)</span>
+                    <span>Key Terms</span>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Kabisaduhin ang mga kahulugang ito na laging lumalabas sa exams:
+                    Memorize these definitions; they come up on exams all the time:
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
@@ -341,7 +341,7 @@ export default function DocumentView({
       {activeTab === 'topics' && (
         <div className="space-y-4">
           <p className="text-xs text-slate-500">
-            Awtomatikong hinati ni Kabi ang module mo sa {doc.topics?.length || 0} na bahagi para madaling aralin bawat paksa:
+            Kabi automatically split your module into {doc.topics?.length || 0} sections so you can study one topic at a time:
           </p>
 
           <div className="space-y-3">
@@ -367,7 +367,7 @@ export default function DocumentView({
                           {topic.title}
                         </h3>
                         <p className="text-[11px] text-slate-400">
-                          {wordCount} salita
+                          {wordCount} words
                         </p>
                       </div>
                     </div>
@@ -413,13 +413,13 @@ export default function DocumentView({
                           onClick={() => onStartFlashcards(doc.id, topic.id)}
                           className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg"
                         >
-                          Mag-Flashcards
+                          Study Flashcards
                         </button>
                         <button
                           onClick={() => onStartQuiz(doc.id, topic.id)}
                           className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg"
                         >
-                          Mag-Quiz
+                          Take Quiz
                         </button>
                       </div>
                     </div>
@@ -440,7 +440,7 @@ export default function DocumentView({
               Ask Kabisado (Explainer Chat) 🦉💬
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              May malabong konsepto? Magtanong kay Kabi! Grounded ang lahat ng sagot sa iyong module at may citation kung saang kabanata ito kinuha.
+              Confused by a concept? Ask Kabi! Every answer is grounded in your module and cites the chapter it came from.
             </p>
           </div>
           <button
@@ -448,7 +448,7 @@ export default function DocumentView({
             className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Simulan ang Chat kay Kabi</span>
+            <span>Start Chatting with Kabi</span>
           </button>
         </div>
       )}
