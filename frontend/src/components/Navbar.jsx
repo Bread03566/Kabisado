@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { BookOpen, Sparkles, Key, HelpCircle, Layers, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
+import { BookOpen, Sparkles, Layers, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
 import Mascot from './Mascot';
 
-export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigured }) {
+export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigured, aiModel }) {
   const [showKeyInfo, setShowKeyInfo] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 md:py-0 md:h-16 flex flex-wrap md:flex-nowrap items-center justify-between gap-x-4 gap-y-2">
         {/* Brand & Mascot */}
         <div 
           onClick={() => onSelectTab('library')}
@@ -23,14 +23,14 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
                 AI Reviewer
               </span>
             </div>
-            <p className="text-[11px] font-medium text-slate-500 italic">
+            <p className="hidden sm:block text-[11px] font-medium text-slate-500 italic">
               "Study today, pass tomorrow."
             </p>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1.5 sm:gap-2">
+        <nav className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto overflow-x-auto pb-0.5">
           <button
             onClick={() => onSelectTab('library')}
             className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 ${
@@ -83,10 +83,10 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden md:inline">
-              {aiConfigured ? 'Claude 3.5 Active' : 'Grounded Engine'}
+              {aiConfigured ? 'Gemini AI' : 'Offline Mode'}
             </span>
             <span className="md:hidden">
-              {aiConfigured ? 'Claude' : 'Active'}
+              {aiConfigured ? 'AI' : 'Offline'}
             </span>
           </button>
         </nav>
@@ -94,7 +94,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
 
       {/* AI Key Info Modal / Dropdown */}
       {showKeyInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2 text-slate-800 font-bold">
@@ -118,21 +118,21 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
                 )}
                 <div>
                   <p className="font-semibold text-slate-800">
-                    Status: {aiConfigured ? 'Anthropic Claude API Connected' : 'Grounded Local Engine Active'}
+                    Status: {aiConfigured ? 'Google Gemini connected' : 'Offline engine'}
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {aiConfigured
-                      ? 'Using Claude 3.5 Sonnet for in-depth summaries, flashcards, and analysis.'
-                      : 'Running in grounded NLP mode. Add an ANTHROPIC_API_KEY to backend/.env for full Claude power!'}
+                      ? `Summaries, flashcards, quizzes, and chat are written by ${aiModel || 'Gemini'}. If Gemini is busy, Kabi switches to a backup model, then to the offline engine.`
+                      : 'Kabi is using the built-in offline engine, which picks key sentences and facts straight from your module. Add a Gemini key for written summaries and smarter questions.'}
                   </p>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/80 text-amber-900 text-xs">
-                <p className="font-semibold mb-1">How do I add a Claude API key?</p>
+                <p className="font-semibold mb-1">How do I add a Gemini API key?</p>
                 <ol className="list-decimal pl-4 space-y-1">
                   <li>Open the file <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">backend/.env</code></li>
-                  <li>Add your key: <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">ANTHROPIC_API_KEY=sk-ant-...</code></li>
+                  <li>Add your key: <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">GEMINI_API_KEY=...</code> (free from Google AI Studio)</li>
                   <li>Restart the backend server if it's already running.</li>
                 </ol>
               </div>

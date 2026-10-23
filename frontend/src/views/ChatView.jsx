@@ -4,18 +4,14 @@ import {
   Send, 
   Sparkles, 
   Volume2, 
-  VolumeX, 
   Mic, 
   MicOff, 
-  HelpCircle, 
   BookMarked,
-  Layers,
-  CheckCircle2,
-  AlertCircle,
   ToggleLeft,
   ToggleRight
 } from 'lucide-react';
 import Mascot from '../components/Mascot';
+import Markdown from '../components/Markdown';
 import { askDocumentChat } from '../services/api';
 
 export default function ChatView({ 
@@ -231,9 +227,11 @@ export default function ChatView({
                     : 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs'
                 }`}
               >
-                <div className="whitespace-pre-wrap">
-                  {m.content}
-                </div>
+                {isUser ? (
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                ) : (
+                  <Markdown>{m.content}</Markdown>
+                )}
 
                 {/* Citation badge if provided */}
                 {!isUser && m.citation && (

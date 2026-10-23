@@ -64,6 +64,7 @@ class DocumentDetailResponse(BaseModel):
 class SummaryGenerateRequest(BaseModel):
     length: str = Field(default="standard", pattern="^(brief|standard|detailed)$")
     topic_id: Optional[int] = None
+    force: bool = False  # True ignores the cached summary and writes a new one
 
 class SummaryResponse(BaseModel):
     summary: str

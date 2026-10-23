@@ -82,6 +82,16 @@ class Flashcard(Base):
     topic = relationship("Topic", back_populates="flashcards")
 
 
+class ReviewLog(Base):
+    """One row per flashcard review, so study streaks count flashcard practice, not just quizzes."""
+    __tablename__ = "review_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    flashcard_id = Column(Integer, ForeignKey("flashcards.id", ondelete="CASCADE"), nullable=False, index=True)
+    rating = Column(String(10), nullable=False)
+    reviewed_at = Column(DateTime, default=utc_now, index=True)
+
+
 class Question(Base):
     __tablename__ = "questions"
 

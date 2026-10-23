@@ -1,22 +1,20 @@
 import React, { useState } from 'react';
 import { 
   Calendar, 
-  Clock, 
-  CheckCircle2, 
   X, 
-  Sparkles, 
-  BookOpen, 
-  BrainCircuit, 
-  HelpCircle,
-  AlertCircle
+  Sparkles 
 } from 'lucide-react';
 import Mascot from './Mascot';
 
-export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsCount = 4 }) {
+// "YYYY-MM-DD" in the student's local calendar (toISOString would use UTC and can be a day off)
+const toDateInputValue = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export default function StudyPlanModal({ isOpen, onClose, documentTitle, topics = [] }) {
   const [examDate, setExamDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 5);
-    return d.toISOString().split('T')[0];
+    return toDateInputValue(d);
   });
   const [hoursPerDay, setHoursPerDay] = useState(2);
   const [plan, setPlan] = useState(null);
@@ -25,10 +23,11 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
 
   const handleGeneratePlan = (e) => {
     e.preventDefault();
-    const today = new Date();
-    const target = new Date(examDate);
-    const diffTime = target.getTime() - today.getTime();
-    const daysLeft = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [year, month, day] = examDate.split('-').map(Number);
+    const target = new Date(year, month - 1, day);
+    const daysLeft = Math.max(1, Math.round((target - today) / (1000 * 60 * 60 * 24)));
 
     // Generate daily itinerary
     const daysPlan = [];
@@ -76,6 +75,17 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
       }
     }
 
+    // Spread the module's topics over the study days, so every topic gets a day before the mock exam
+    const lastStudyDay = Math.max(1, daysLeft - 2);
+    const studyDays = daysPlan.filter((d) => d.day <= lastStudyDay);
+    const topicTitles = topics.map((t) => t.title);
+    studyDays.forEach((d, i) => {
+      const start = Math.floor((i * topicTitles.length) / studyDays.length);
+      const end = Math.floor(((i + 1) * topicTitles.length) / studyDays.length);
+      const focus = topicTitles.slice(start, end);
+      if (focus.length) d.tasks.unshift(`Focus topics: ${focus.join('; ')}`);
+    });
+
     setPlan({
       daysLeft,
       hoursPerDay,
@@ -85,7 +95,7 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 my-8 animate-in zoom-in-95">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -97,7 +107,7 @@ export default function StudyPlanModal({ isOpen, onClose, documentTitle, topicsC
                 Study Plan by Exam Date 📅
               </h2>
               <p className="text-xs text-slate-500">
-                Kabi will build a schedule for you so you don't have to cram!
+                Kabi will build a schedule for {documentTitle || 'your module'} so you don't have to cram!
               </p>
             </div>
           </div>

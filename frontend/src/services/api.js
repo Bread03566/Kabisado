@@ -66,11 +66,11 @@ export async function deleteDocument(id) {
 }
 
 // ==================== Summaries ====================
-export async function summarizeDocument(id, length = "standard", topicId = null) {
+export async function summarizeDocument(id, length = "standard", topicId = null, force = false) {
   const res = await fetch(`${API_BASE}/api/documents/${id}/summarize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ length, topic_id: topicId }),
+    body: JSON.stringify({ length, topic_id: topicId, force }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -198,8 +198,9 @@ export async function submitFlag(targetType, targetId, reason, notes = "") {
 
 // ==================== Progress & Dashboard ====================
 export async function getDashboardStats(documentId = null) {
-  let url = `${API_BASE}/api/progress/dashboard`;
-  if (documentId) url += `?document_id=${documentId}`;
+  // Lets the server count streak days by the student's own calendar, not UTC
+  let url = `${API_BASE}/api/progress/dashboard?tz_offset_minutes=${new Date().getTimezoneOffset()}`;
+  if (documentId) url += `&document_id=${documentId}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch dashboard stats");
   return res.json();

@@ -1,5 +1,71 @@
 @import "tailwindcss";
 
+/*
+ * Kabisado olive palette: khaki #D9D28B, sage #B2BD7E, olive #8E9162, moss #6A795D.
+ *
+ * Instead of rewriting every class, the Tailwind scales the app uses are
+ * remapped here onto the palette (light shades for surfaces, dark shades for
+ * text). Moss is the button color because it is the only palette color dark
+ * enough for white text; body text uses deeper olives derived from the palette.
+ * Status colors (emerald, rose, blue...) keep Tailwind's defaults.
+ */
+@theme {
+  --color-khaki: #D9D28B;
+  --color-sage: #B2BD7E;
+  --color-olive: #8E9162;
+  --color-moss: #6A795D;
+  --color-ink: #1F2318; /* modal backdrops */
+
+  /* Neutrals, tinted toward the palette */
+  --color-slate-50: #F6F4E3;
+  --color-slate-100: #EEEBD3;
+  --color-slate-200: #E0DCBA;
+  --color-slate-300: #CBC79E;
+  --color-slate-400: #9A9C78;
+  --color-slate-500: #6E7158;
+  --color-slate-600: #5B5E48;
+  --color-slate-700: #4A4D3A;
+  --color-slate-800: #3A3D2E;
+  --color-slate-900: #2A2D21;
+  --color-slate-950: #1C1E16;
+
+  /* Primary accent (was amber): khaki surfaces, moss buttons */
+  --color-amber-50: #FAF8E8;
+  --color-amber-100: #F1EDC6;
+  --color-amber-200: #D9D28B;
+  --color-amber-300: #C9C886;
+  --color-amber-400: #B2BD7E;
+  --color-amber-500: #6A795D;
+  --color-amber-600: #6A795D;
+  --color-amber-700: #5A6850;
+  --color-amber-800: #4B5743;
+  --color-amber-900: #3D4736;
+  --color-amber-950: #2E3628;
+  --color-orange-500: #7E8A5F;
+  --color-orange-600: #75825A;
+
+  /* Secondary accent (was indigo): olive */
+  --color-indigo-50: #F4F4EA;
+  --color-indigo-100: #E8E9D4;
+  --color-indigo-200: #D2D4B2;
+  --color-indigo-300: #B7BA8F;
+  --color-indigo-400: #A0A374;
+  --color-indigo-500: #8E9162;
+  --color-indigo-600: #737650;
+  --color-indigo-700: #5F6243;
+  --color-indigo-800: #4C4F36;
+  --color-indigo-900: #3A3D2A;
+  --color-indigo-950: #2A2C1F;
+
+  /* Decorative accent on the dashboard's "Topics tracked" tile */
+  --color-purple-50: #EEF0E0;
+  --color-purple-600: #6A795D;
+}
+
+:root {
+  color-scheme: light;
+}
+
 @layer utilities {
   .perspective-1000 {
     perspective: 1000px;
@@ -19,8 +85,8 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-900);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -30,12 +96,12 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--color-slate-100);
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--color-sage);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--color-olive);
 }

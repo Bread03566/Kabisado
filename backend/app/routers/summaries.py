@@ -56,7 +56,7 @@ async def summarize_document(
     elif payload.length == "detailed" and doc.summary_detailed:
         cached_summary = doc.summary_detailed
 
-    if cached_summary and doc.key_terms:
+    if cached_summary and doc.key_terms and not payload.force:
         return SummaryResponse(
             summary=cached_summary,
             length=payload.length,
@@ -81,7 +81,7 @@ async def summarize_document(
     elif payload.length == "detailed":
         doc.summary_detailed = summary_text
 
-    if not doc.key_terms:
+    if terms_list and (payload.force or not doc.key_terms):
         doc.key_terms = terms_list
 
     db.commit()
@@ -90,5 +90,5 @@ async def summarize_document(
     return SummaryResponse(
         summary=summary_text,
         length=payload.length,
-        key_terms=[KeyTermItem(**item) for item in terms_list]
+        key_terms=[KeyTermItem(**item) for item in (doc.key_terms or [])]
     )

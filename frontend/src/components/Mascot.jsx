@@ -91,7 +91,7 @@ export default function Mascot({ mood = 'sleepy', size = 'md', message = null, c
           <path d="M 78 30 L 68 12 L 60 24 Z" fill="#78350f" stroke="#451a03" strokeWidth="2" />
 
           {/* Nightcap / Study Hat (Purple with pom-pom) */}
-          <path d="M 30 22 Q 50 14 70 22 Q 55 5 45 4 Z" fill="#6366f1" stroke="#4338ca" strokeWidth="2" />
+          <path d="M 30 22 Q 50 14 70 22 Q 55 5 45 4 Z" fill="#D9D28B" stroke="#6A795D" strokeWidth="2" />
           <circle cx="43" cy="4" r="4.5" fill="#fbbf24" stroke="#d97706" strokeWidth="1.5" />
 
           {/* Eyes (rendered dynamically) */}
@@ -107,8 +107,8 @@ export default function Mascot({ mood = 'sleepy', size = 'md', message = null, c
           {/* Sleepy Zzz animation if sleepy */}
           {mood === 'sleepy' && (
             <g className="animate-pulse">
-              <text x="76" y="22" fill="#6366f1" fontSize="12" fontWeight="bold">Z</text>
-              <text x="86" y="14" fill="#818cf8" fontSize="9" fontWeight="bold">z</text>
+              <text x="76" y="22" fill="#6A795D" fontSize="12" fontWeight="bold">Z</text>
+              <text x="86" y="14" fill="#8E9162" fontSize="9" fontWeight="bold">z</text>
             </g>
           )}
         </svg>

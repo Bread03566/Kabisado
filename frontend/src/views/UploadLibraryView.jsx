@@ -4,15 +4,12 @@ import {
   FileText, 
   FileUp, 
   Trash2, 
-  BookOpen, 
   BrainCircuit, 
   HelpCircle, 
   Sparkles, 
-  Clock, 
   Layers, 
   ArrowRight,
-  CheckCircle2,
-  AlertTriangle
+  CheckCircle2
 } from 'lucide-react';
 import Mascot from '../components/Mascot';
 import { uploadDocumentFile, createDocumentFromText, deleteDocument } from '../services/api';
@@ -115,7 +112,7 @@ export default function UploadLibraryView({
       await deleteDocument(docId);
       showToast('success', `"${title}" deleted.`);
       onRefreshDocs();
-    } catch (err) {
+    } catch {
       showToast('error', 'Could not delete the document.');
     }
   };

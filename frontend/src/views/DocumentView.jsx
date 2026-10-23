@@ -6,16 +6,14 @@ import {
   BrainCircuit, 
   HelpCircle, 
   Layers, 
-  CheckCircle2, 
   RefreshCw, 
   BookMarked,
-  Clock,
-  ListFilter,
   MessageSquare,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
 import Mascot from '../components/Mascot';
+import Markdown from '../components/Markdown';
 import { summarizeDocument, getDocument } from '../services/api';
 
 import StudyPlanModal from '../components/StudyPlanModal';
@@ -67,11 +65,11 @@ export default function DocumentView({
     }
   };
 
-  const handleGenerateSummary = async (length = summaryLength) => {
+  const handleGenerateSummary = async (length = summaryLength, force = false) => {
     setIsSummarizing(true);
     try {
       showToast('info', 'Kabi is summarizing the lesson... Just a moment!');
-      const res = await summarizeDocument(documentId, length);
+      const res = await summarizeDocument(documentId, length, null, force);
       setCurrentSummary(res.summary);
       setKeyTerms(res.key_terms || []);
       setSummaryLength(length);
@@ -157,6 +155,14 @@ export default function DocumentView({
           </button>
 
           <button
+            onClick={() => onStartWeakSpotQuiz(doc.id)}
+            title="A quiz on the topics you've scored lowest on"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs rounded-xl transition active:scale-95"
+          >
+            <span>Weak Spots</span>
+          </button>
+
+          <button
             onClick={() => onStartChat(doc.id)}
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition active:scale-95"
           >
@@ -208,7 +214,6 @@ export default function DocumentView({
         >
           <MessageSquare className="w-4 h-4" />
           <span>Ask Kabisado (Chat)</span>
-          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Phase 3</span>
         </button>
       </div>
 
@@ -244,7 +249,7 @@ export default function DocumentView({
             </div>
 
             <button
-              onClick={() => handleGenerateSummary()}
+              onClick={() => handleGenerateSummary(summaryLength, true)}
               disabled={isSummarizing}
               className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition disabled:opacity-50"
             >
@@ -298,9 +303,9 @@ export default function DocumentView({
                   </span>
                 </div>
 
-                <div className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-slate-700">
+                <Markdown className="max-w-prose text-sm sm:text-[15px] leading-relaxed text-slate-700">
                   {currentSummary}
-                </div>
+                </Markdown>
               </div>
 
               {/* Key Terms Section */}
@@ -459,7 +464,7 @@ export default function DocumentView({
           isOpen={showStudyPlanModal}
           onClose={() => setShowStudyPlanModal(false)}
           documentTitle={doc.title}
-          topicsCount={doc.topics?.length || 1}
+          topics={doc.topics || []}
         />
       )}
     </div>

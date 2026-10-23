@@ -1,8 +1,12 @@
 import io
+import re
+from collections import Counter
 import fitz  # PyMuPDF
 from docx import Document as DocxDocument
 from fastapi import HTTPException, status
-from typing import Tuple
+from typing import List
+
+PAGE_NUMBER_PATTERN = re.compile(r"^(?:page\s*)?\d{1,4}(?:\s*(?:of|/)\s*\d{1,4})?$", re.IGNORECASE)
 
 class ParserService:
     @staticmethod
@@ -16,14 +20,8 @@ class ParserService:
                 detail=f"Couldn't open your PDF, friend! It may be corrupted or password-protected: {str(e)}"
             )
 
-        extracted_text_list = []
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            text = page.get_text("text")
-            if text and text.strip():
-                extracted_text_list.append(text.strip())
-
-        full_text = "\n\n".join(extracted_text_list).strip()
+        pages = [doc[page_num].get_text("text") for page_num in range(len(doc))]
+        full_text = ParserService.clean_pdf_pages(pages)
 
         if not full_text or len(full_text) < 30:
             raise HTTPException(
@@ -32,6 +30,36 @@ class ParserService:
             )
 
         return full_text
+
+    @staticmethod
+    def clean_pdf_pages(pages: List[str]) -> str:
+        """
+        Joins PDF pages into study text, dropping page furniture: headers and footers
+        repeated on most pages (course codes, handout names, copyright lines) and page
+        numbers. Also repairs U+FFFD glyphs that PyMuPDF emits for unmapped characters,
+        which are usually apostrophes inside words and bullets elsewhere.
+        """
+        page_lines = [[line.strip() for line in page.splitlines()] for page in pages]
+        repeated = set()
+        if len(pages) >= 3:
+            counts = Counter(line for lines in page_lines for line in set(lines) if line)
+            threshold = max(2, len(pages) // 2)
+            repeated = {line for line, n in counts.items() if n >= threshold and len(line) <= 80}
+
+        cleaned_pages = []
+        for lines in page_lines:
+            kept = []
+            for line in lines:
+                if line in repeated or PAGE_NUMBER_PATTERN.match(line):
+                    continue
+                line = re.sub(r"(?<=\w)�(?=\w)", "'", line).replace("�", "•")
+                if line == "•":
+                    continue
+                kept.append(line)
+            page_text = re.sub(r"\n{3,}", "\n\n", "\n".join(kept)).strip()
+            if page_text:
+                cleaned_pages.append(page_text)
+        return "\n\n".join(cleaned_pages).strip()
 
     @staticmethod
     def parse_docx(file_bytes: bytes, filename: str = "document.docx") -> str:

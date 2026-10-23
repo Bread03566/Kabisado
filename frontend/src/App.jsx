@@ -17,6 +17,7 @@ export default function App() {
   const [isDueCardsMode, setIsDueCardsMode] = useState(false);
   const [isWeakSpotQuizMode, setIsWeakSpotQuizMode] = useState(false);
   const [aiConfigured, setAiConfigured] = useState(false);
+  const [aiModel, setAiModel] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function App() {
     try {
       const health = await checkHealth();
       setAiConfigured(Boolean(health.ai_configured));
+      setAiModel(health.ai_model || null);
     } catch {
       setAiConfigured(false);
     }
@@ -34,9 +36,8 @@ export default function App() {
     try {
       const docs = await getDocuments();
       setDocuments(docs);
-      if (docs.length > 0 && !currentDoc) {
-        setCurrentDoc(docs[0]);
-      }
+      // Keep the open document if it still exists; otherwise fall back to the newest one
+      setCurrentDoc((prev) => docs.find((d) => d.id === prev?.id) || docs[0] || null);
     } catch (err) {
       console.error("Could not fetch documents:", err);
     }
@@ -98,6 +99,7 @@ export default function App() {
         }}
         currentDoc={currentDoc}
         aiConfigured={aiConfigured}
+        aiModel={aiModel}
       />
 
       {/* Main Content Area */}
@@ -170,11 +172,6 @@ export default function App() {
             <span translate="no" className="notranslate font-extrabold text-slate-800">Kabisado 🦉</span>
             <span>—</span>
             <span className="italic">Study today, pass tomorrow.</span>
-          </div>
-          <div className="flex items-center gap-3 text-[11px] text-slate-400">
-            <span>Phases 1-4 Complete</span>
-            <span>•</span>
-            <span>React + Vite + FastAPI + Claude</span>
           </div>
         </div>
       </footer>

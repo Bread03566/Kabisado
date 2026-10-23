@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 import datetime
 
 from app.database import get_db
-from app.models.models import Document, Topic, Question, QuizAttempt, QuestionAttempt, User
+from app.models.models import Document, Topic, Question, QuizAttempt, QuestionAttempt
 from app.schemas.schemas import (
     QuizGenerateRequest,
     QuestionResponse,
@@ -13,51 +13,48 @@ from app.schemas.schemas import (
     QuestionResultDetail
 )
 from app.services.ai_service import ai_service
+from app.services.topic_planner import plan_counts, run_per_topic, topics_for_generation
 
 router = APIRouter(tags=["quizzes"])
 
-@router.post("/api/documents/{document_id}/quiz/generate", response_model=List[QuestionResponse])
-async def generate_quiz_questions(
-    document_id: int,
-    payload: QuizGenerateRequest,
-    db: Session = Depends(get_db)
-):
-    """
-    Generate multiple-choice questions for a document or specific topic.
-    """
+
+def to_response(q: Question) -> QuestionResponse:
+    return QuestionResponse(
+        id=q.id,
+        document_id=q.document_id,
+        topic_id=q.topic_id,
+        topic_title=q.topic.title if q.topic else None,
+        question_text=q.question_text,
+        choices=q.choices,
+        correct_index=q.correct_index,
+        explanation=q.explanation,
+        difficulty=q.difficulty,
+        created_at=q.created_at
+    )
+
+
+def get_document_or_404(db: Session, document_id: int) -> Document:
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+    return doc
 
-    topics_to_process = []
-    if payload.topic_id:
-        topic = db.query(Topic).filter(Topic.id == payload.topic_id, Topic.document_id == doc.id).first()
-        if not topic:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found.")
-        topics_to_process.append(topic)
-    else:
-        topics_to_process = db.query(Topic).filter(Topic.document_id == doc.id).order_by(Topic.order_index).all()
-        if not topics_to_process:
-            topic = Topic(document_id=doc.id, title="Main Topic", content=doc.raw_text, order_index=0)
-            db.add(topic)
-            db.commit()
-            db.refresh(topic)
-            topics_to_process.append(topic)
 
-    questions_per_topic = max(1, payload.count // len(topics_to_process)) if len(topics_to_process) > 0 else payload.count
-
-    created_questions = []
-    for topic in topics_to_process:
-        generated = await ai_service.generate_quiz_questions(
+async def create_questions(db: Session, doc: Document, plan: List[tuple], difficulty: str) -> List[QuestionResponse]:
+    """Generates and stores questions for each (topic, count) pair."""
+    async def generate(topic, count) -> List[Dict[str, Any]]:
+        return await ai_service.generate_quiz_questions(
             document_title=doc.title,
             topic_title=topic.title,
             topic_content=topic.content,
             topic_id=topic.id,
-            count=questions_per_topic,
-            difficulty=payload.difficulty or "medium"
+            count=count,
+            difficulty=difficulty
         )
 
-        for q_data in generated:
+    created: List[Question] = []
+    for topic, count, generated in await run_per_topic(plan, generate):
+        for q_data in generated[:count]:
             q = Question(
                 document_id=doc.id,
                 topic_id=topic.id,
@@ -68,29 +65,33 @@ async def generate_quiz_questions(
                 difficulty=q_data.get("difficulty", "medium")
             )
             db.add(q)
-            created_questions.append(q)
+            created.append(q)
+
+    if not created:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Kabi couldn't find enough facts in this text to write quiz questions. Try a longer module, or connect an AI key."
+        )
 
     db.commit()
-    for q in created_questions:
+    for q in created:
         db.refresh(q)
+    return [to_response(q) for q in created]
 
-    results = []
-    for q in created_questions:
-        t_title = q.topic.title if q.topic else None
-        results.append(QuestionResponse(
-            id=q.id,
-            document_id=q.document_id,
-            topic_id=q.topic_id,
-            topic_title=t_title,
-            question_text=q.question_text,
-            choices=q.choices,
-            correct_index=q.correct_index,
-            explanation=q.explanation,
-            difficulty=q.difficulty,
-            created_at=q.created_at
-        ))
 
-    return results
+@router.post("/api/documents/{document_id}/quiz/generate", response_model=List[QuestionResponse])
+async def generate_quiz_questions(
+    document_id: int,
+    payload: QuizGenerateRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate multiple-choice questions for a document or specific topic.
+    The requested count is spread across topics, so asking for 5 questions gives about 5 questions.
+    """
+    doc = get_document_or_404(db, document_id)
+    topics = topics_for_generation(db, doc, payload.topic_id)
+    return await create_questions(db, doc, plan_counts(topics, payload.count), payload.difficulty or "medium")
 
 @router.post("/api/documents/{document_id}/quiz/weak-spots", response_model=List[QuestionResponse])
 async def generate_weak_spot_quiz(
@@ -100,9 +101,7 @@ async def generate_weak_spot_quiz(
     """
     Generates a targeted quiz from the student's lowest-mastery topics (Weak-Spot Quiz).
     """
-    doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+    doc = get_document_or_404(db, document_id)
 
     topics = db.query(Topic).filter(Topic.document_id == doc.id).all()
     if not topics:
@@ -112,65 +111,16 @@ async def generate_weak_spot_quiz(
     topic_scores = []
     for t in topics:
         q_ids = [q.id for q in t.questions]
-        if not q_ids:
-            topic_scores.append((t, 0.0, 0))
-            continue
-        attempts = db.query(QuestionAttempt).filter(QuestionAttempt.question_id.in_(q_ids)).all()
-        if not attempts:
-            topic_scores.append((t, 0.0, 0))
-        else:
-            correct = sum(1 for a in attempts if a.is_correct)
-            pct = (correct / len(attempts)) * 100
-            topic_scores.append((t, pct, len(attempts)))
+        attempts = db.query(QuestionAttempt).filter(QuestionAttempt.question_id.in_(q_ids)).all() if q_ids else []
+        correct = sum(1 for a in attempts if a.is_correct)
+        pct = (correct / len(attempts)) * 100 if attempts else 0.0
+        topic_scores.append((t, pct, len(attempts)))
 
-    # Sort topics by lowest mastery first
+    # Lowest mastery first; among equals, topics with more evidence of struggle first
     topic_scores.sort(key=lambda x: (x[1], -x[2]))
     weak_topics = [item[0] for item in topic_scores[:3]]
 
-    # Generate or pick 2 questions per weak topic
-    created_questions = []
-    for topic in weak_topics:
-        generated = await ai_service.generate_quiz_questions(
-            document_title=doc.title,
-            topic_title=topic.title,
-            topic_content=topic.content,
-            topic_id=topic.id,
-            count=2,
-            difficulty="medium"
-        )
-        for q_data in generated:
-            q = Question(
-                document_id=doc.id,
-                topic_id=topic.id,
-                question_text=q_data["question"],
-                choices=q_data["choices"],
-                correct_index=q_data["correct_index"],
-                explanation=q_data["explanation"],
-                difficulty="medium"
-            )
-            db.add(q)
-            created_questions.append(q)
-
-    db.commit()
-    for q in created_questions:
-        db.refresh(q)
-
-    results = []
-    for q in created_questions:
-        t_title = q.topic.title if q.topic else None
-        results.append(QuestionResponse(
-            id=q.id,
-            document_id=q.document_id,
-            topic_id=q.topic_id,
-            topic_title=t_title,
-            question_text=q.question_text,
-            choices=q.choices,
-            correct_index=q.correct_index,
-            explanation=q.explanation,
-            difficulty=q.difficulty,
-            created_at=q.created_at
-        ))
-    return results
+    return await create_questions(db, doc, [(topic, 2) for topic in weak_topics], "medium")
 
 
 @router.get("/api/documents/{document_id}/questions", response_model=List[QuestionResponse])
@@ -188,24 +138,7 @@ def get_document_questions(
         query = query.filter(Question.topic_id == topic_id)
     if difficulty and difficulty != "mixed":
         query = query.filter(Question.difficulty == difficulty)
-
-    questions = query.order_by(Question.created_at.desc()).all()
-    results = []
-    for q in questions:
-        t_title = q.topic.title if q.topic else None
-        results.append(QuestionResponse(
-            id=q.id,
-            document_id=q.document_id,
-            topic_id=q.topic_id,
-            topic_title=t_title,
-            question_text=q.question_text,
-            choices=q.choices,
-            correct_index=q.correct_index,
-            explanation=q.explanation,
-            difficulty=q.difficulty,
-            created_at=q.created_at
-        ))
-    return results
+    return [to_response(q) for q in query.order_by(Question.created_at.desc()).all()]
 
 @router.post("/api/quizzes/submit", response_model=QuizResultResponse)
 def submit_quiz_attempt(
@@ -215,46 +148,47 @@ def submit_quiz_attempt(
     """
     Submit quiz answers, record attempts, and return scored results with roast/praise.
     """
-    total = len(payload.answers)
-    if total == 0:
+    if not payload.answers:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No answers were submitted!")
+    get_document_or_404(db, payload.document_id)
 
-    score = 0
-    results_detail: List[QuestionResultDetail] = []
+    question_ids = [a.question_id for a in payload.answers]
+    questions = {
+        q.id: q
+        for q in db.query(Question).filter(
+            Question.id.in_(question_ids),
+            Question.document_id == payload.document_id
+        ).all()
+    }
+    answers = [a for a in payload.answers if a.question_id in questions]
+    if not answers:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="None of these questions belong to this module.")
 
-    # Create quiz attempt
+    now = datetime.datetime.now(datetime.timezone.utc)
     attempt = QuizAttempt(
         user_id=1,
         document_id=payload.document_id,
         topic_id=payload.topic_id,
         score=0,
-        total_questions=total,
+        total_questions=len(answers),
         difficulty=payload.difficulty,
-        completed_at=datetime.datetime.now(datetime.timezone.utc)
+        completed_at=now
     )
     db.add(attempt)
-    db.commit()
-    db.refresh(attempt)
 
-    for item in payload.answers:
-        question = db.query(Question).filter(Question.id == item.question_id).first()
-        if not question:
-            continue
+    score = 0
+    results_detail: List[QuestionResultDetail] = []
+    for item in answers:
+        question = questions[item.question_id]
+        is_correct = item.selected_index == question.correct_index
+        score += int(is_correct)
 
-        is_correct = (item.selected_index == question.correct_index)
-        if is_correct:
-            score += 1
-
-        qa = QuestionAttempt(
-            attempt_id=attempt.id,
+        attempt.question_attempts.append(QuestionAttempt(
             question_id=question.id,
             selected_index=item.selected_index,
             is_correct=is_correct,
-            answered_at=datetime.datetime.now(datetime.timezone.utc)
-        )
-        db.add(qa)
-
-        t_title = question.topic.title if question.topic else None
+            answered_at=now
+        ))
         results_detail.append(QuestionResultDetail(
             question_id=question.id,
             question_text=question.question_text,
@@ -263,13 +197,15 @@ def submit_quiz_attempt(
             correct_index=question.correct_index,
             is_correct=is_correct,
             explanation=question.explanation,
-            topic_title=t_title
+            topic_title=question.topic.title if question.topic else None
         ))
 
     attempt.score = score
     db.commit()
+    db.refresh(attempt)
 
-    pct = round((score / total) * 100, 1) if total > 0 else 0.0
+    total = len(answers)
+    pct = round((score / total) * 100, 1)
 
     # Funny roast / praise based on score
     if pct == 100:

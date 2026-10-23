@@ -115,3 +115,128 @@ def test_create_document_text_and_flows(client):
     weak_questions = weak_res.json()
     assert len(weak_questions) > 0
 
+
+
+HISTORY_TEXT = "\n\n".join(
+    f"Chapter {i}: Events of {1880 + i}\n"
+    f"In {1880 + i} the Propaganda Movement in Madrid published new essays about reform. "
+    f"The writers met in Barcelona and Madrid to plan petitions to the Spanish Cortes. "
+    f"Graciano Lopez Jaena and Marcelo del Pilar led many of these meetings in {1880 + i}."
+    for i in range(1, 7)
+)
+
+
+def make_doc(client, title="History Module", text=HISTORY_TEXT):
+    res = client.post("/api/documents/text", json={"title": title, "text": text})
+    assert res.status_code == 201
+    return res.json()
+
+
+def docx_bytes(text: str) -> bytes:
+    import io
+    from docx import Document as DocxDocument
+    d = DocxDocument()
+    for paragraph in text.split("\n\n"):
+        d.add_paragraph(paragraph)
+    buf = io.BytesIO()
+    d.save(buf)
+    return buf.getvalue()
+
+
+def test_upload_never_uses_client_filename_as_path(client):
+    import os
+    from app.config import settings
+
+    res = client.post(
+        "/api/documents/upload",
+        files={"file": ("../../escape.docx", docx_bytes(HISTORY_TEXT), "application/octet-stream")},
+    )
+    assert res.status_code == 201
+    assert res.json()["title"] == "escape"
+    saved = os.listdir(settings.UPLOAD_DIR)
+    assert saved and all(name.endswith(".docx") and "escape" not in name for name in saved)
+
+
+def test_upload_rejects_files_over_the_size_limit(client, monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "MAX_UPLOAD_MB", 0)
+    res = client.post("/api/documents/upload", files={"file": ("big.docx", docx_bytes(HISTORY_TEXT), "application/octet-stream")})
+    assert res.status_code == 413
+
+
+def test_quiz_and_flashcard_counts_respect_the_request(client):
+    doc = make_doc(client)
+    assert len(doc["topics"]) == 6
+
+    questions = client.post(f"/api/documents/{doc['id']}/quiz/generate", json={"count": 3}).json()
+    assert 1 <= len(questions) <= 3
+
+    cards = client.post(f"/api/documents/{doc['id']}/flashcards/generate", json={"count": 4}).json()
+    assert 1 <= len(cards) <= 4
+
+
+def test_regenerate_summary_bypasses_cache(client, monkeypatch):
+    from app.services import ai_service as ai_module
+    doc = make_doc(client)
+    calls = []
+
+    async def fake_summary(document_title, text_content, length="standard"):
+        calls.append(length)
+        return {"summary": f"Summary #{len(calls)}", "key_terms": [{"term": "Cortes", "definition": "The Spanish parliament."}]}
+
+    monkeypatch.setattr(ai_module.ai_service, "generate_summary", fake_summary)
+    url = f"/api/documents/{doc['id']}/summarize"
+    assert client.post(url, json={"length": "brief"}).json()["summary"] == "Summary #1"
+    assert client.post(url, json={"length": "brief"}).json()["summary"] == "Summary #1"  # cached
+    assert client.post(url, json={"length": "brief", "force": True}).json()["summary"] == "Summary #2"
+
+
+def test_dashboard_counts_every_attempt_and_flashcard_reviews(client):
+    doc = make_doc(client)
+    question = client.post(f"/api/documents/{doc['id']}/quiz/generate", json={"count": 1}).json()[0]
+    before = client.get("/api/progress/dashboard").json()["total_quizzes_taken"]
+    for _ in range(16):
+        client.post("/api/quizzes/submit", json={
+            "document_id": doc["id"],
+            "answers": [{"question_id": question["id"], "selected_index": question["correct_index"]}],
+        })
+    dash = client.get("/api/progress/dashboard", params={"tz_offset_minutes": -480}).json()
+    assert dash["total_quizzes_taken"] == before + 16
+    assert len(dash["quiz_history"]) == 15
+    assert dash["quiz_history"][0]["completed_at"].endswith("+00:00")
+    assert dash["streak_days"] >= 1
+    assert all("document_title" in t for t in dash["topic_mastery"])
+
+
+def test_streak_counts_flashcard_reviews():
+    import datetime
+    from app.routers.progress import calculate_consecutive_days_streak
+    today = datetime.date(2026, 10, 23)
+    days = {today, today - datetime.timedelta(days=1), today - datetime.timedelta(days=3)}
+    assert calculate_consecutive_days_streak(days, today=today) == 2
+
+
+def test_submit_ignores_questions_from_other_documents(client):
+    doc_a = make_doc(client, title="Doc A")
+    doc_b = make_doc(client, title="Doc B")
+    q_b = client.post(f"/api/documents/{doc_b['id']}/quiz/generate", json={"count": 1}).json()[0]
+    res = client.post("/api/quizzes/submit", json={
+        "document_id": doc_a["id"],
+        "answers": [{"question_id": q_b["id"], "selected_index": q_b["correct_index"]}],
+    })
+    assert res.status_code == 400
+
+
+def test_unexpected_errors_do_not_leak_details(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.services import ai_service as ai_module
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("internal secret path C:/server/db")
+
+    monkeypatch.setattr(ai_module.ai_service, "answer_document_question", boom)
+    with TestClient(app, raise_server_exceptions=False) as c:
+        doc = make_doc(c)
+        res = c.post(f"/api/documents/{doc['id']}/chat", json={"question": "Who led the meetings?"})
+    assert res.status_code == 500
+    assert "secret" not in res.text

@@ -31,7 +31,7 @@ Kabisado-project/
 │   │   ├── services/
 │   │   │   ├── parser_service.py    # PDF (PyMuPDF), DOCX (python-docx), and text parsing
 │   │   │   ├── segmenter_service.py # Topic extraction and academic heading chunking
-│   │   │   └── ai_service.py        # Claude API client, structured JSON enforcement & fallbacks
+│   │   │   └── ai_service.py        # Gemini client (with model fallback), JSON validation & offline engine
 │   │   └── routers/
 │   │       ├── documents.py     # Upload, paste, document CRUD
 │   │       ├── summaries.py     # Brief, standard, detailed summaries + key terms
@@ -84,6 +84,7 @@ Kabisado-project/
 | `quiz_attempts` | Quiz submission record | `id`, `user_id`, `document_id`, `topic_id`, `score`, `total_questions`, `difficulty`, `completed_at` |
 | `question_attempts`| Per-question answer history | `id`, `attempt_id`, `question_id`, `selected_index`, `is_correct`, `answered_at` |
 | `flags` | Student reports on bad cards/questions | `id`, `target_type` (flashcard/question), `target_id`, `reason`, `notes`, `created_at` |
+| `review_logs` | One row per flashcard review (feeds the study streak) | `id`, `flashcard_id`, `rating`, `reviewed_at` |
 
 ---
 
@@ -118,11 +119,24 @@ uvicorn app.main:app --reload --port 8000
 > The API will be running at `http://localhost:8000` with Swagger docs available at `http://localhost:8000/docs`.
 
 #### Setting Gemini API Key
-Open `backend/.env` and insert your Gemini API key:
+Open `backend/.env` and insert your Gemini API key (free from Google AI Studio):
 ```env
 GEMINI_API_KEY="your-gemini-api-key"
+GEMINI_MODEL="gemini-3.5-flash-lite"          # fast default
+GEMINI_FALLBACK_MODELS="gemini-3.8-flash"     # tried when the main model is busy or slow
 ```
-*(If `GEMINI_API_KEY` is not provided, Kabisado uses its built-in grounded fallback engine.)*
+Each model gets `GEMINI_TIMEOUT_SECONDS` (default 60) before Kabisado moves to the next one. If no key is set, or every model fails, Kabisado uses its built-in offline engine, which builds summaries, flashcards, and quizzes straight from the module's own sentences.
+
+> Google retires older models over time. If AI features stop working, check the backend log for a `404 NOT_FOUND` model error and update `GEMINI_MODEL`.
+
+#### Running the backend in Docker (optional)
+```bash
+cd backend
+docker compose up -d --build   # API on http://localhost:8000
+docker compose logs -f         # watch logs
+docker compose down            # stop (data is kept; `down -v` deletes it)
+```
+The database and uploads live in the `kabisado-data` Docker volume. `.env` is read when the container starts and is never copied into the image.
 
 ### 3. Frontend Setup
 ```bash
@@ -146,7 +160,7 @@ npm run dev
 cd backend
 .\.venv\Scripts\pytest -v
 ```
-All unit tests and integration tests will run, verifying text extraction, topic segmentation, summary caching, flashcard generation, quiz submission, and error handling.
+All unit tests and integration tests will run, verifying text extraction, topic segmentation, summary caching, flashcard generation, quiz submission, and error handling. Tests use a temporary database and upload folder with the AI switched off (see `tests/conftest.py`), so they never touch your real data or spend API quota.
 
 ### Frontend Build Verification
 ```bash

@@ -27,6 +27,8 @@ wheels/
 
 # Databases & Uploads
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 backend/kabisado.db
 backend/uploads/

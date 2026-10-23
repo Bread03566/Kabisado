@@ -8,12 +8,9 @@ import {
   Trash2, 
   Flag, 
   Sparkles, 
-  Check, 
-  X, 
   ChevronLeft, 
   ChevronRight,
   BrainCircuit,
-  Filter,
   Volume2
 } from 'lucide-react';
 import Mascot from '../components/Mascot';
@@ -40,7 +37,7 @@ export default function FlashcardStudyMode({
   const [isFlipped, setIsFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedTopicId, setSelectedTopicId] = useState(initialTopicId);
+  const selectedTopicId = initialTopicId;
   const [isFinished, setIsFinished] = useState(false);
   
   // Modals
@@ -154,7 +151,7 @@ export default function FlashcardStudyMode({
     try {
       await reviewFlashcard(currentCard.id, rating);
       handleNextCard();
-    } catch (err) {
+    } catch {
       handleNextCard();
     }
   };
@@ -176,7 +173,7 @@ export default function FlashcardStudyMode({
       setFormFront('');
       setFormBack('');
       showToast('success', 'New flashcard added!');
-    } catch (err) {
+    } catch {
       showToast('error', 'Could not add the card.');
     }
   };
@@ -197,7 +194,7 @@ export default function FlashcardStudyMode({
       setCards(newCards);
       setShowEditModal(false);
       showToast('success', 'Flashcard updated!');
-    } catch (err) {
+    } catch {
       showToast('error', 'Could not update the card.');
     }
   };
@@ -216,7 +213,7 @@ export default function FlashcardStudyMode({
       }
       setIsFlipped(false);
       showToast('success', 'Flashcard deleted.');
-    } catch (err) {
+    } catch {
       showToast('error', 'Failed to delete the card.');
     }
   };
@@ -532,7 +529,7 @@ export default function FlashcardStudyMode({
 
       {/* ADD CARD MODAL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-base">Add Flashcard</h3>
@@ -607,7 +604,7 @@ export default function FlashcardStudyMode({
 
       {/* EDIT CARD MODAL */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-base">Edit Flashcard</h3>

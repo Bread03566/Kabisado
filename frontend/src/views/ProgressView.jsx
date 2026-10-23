@@ -5,18 +5,24 @@ import {
   Target, 
   Layers, 
   AlertTriangle, 
-  CheckCircle2, 
-  BrainCircuit, 
-  HelpCircle, 
   Sparkles, 
   ArrowRight,
-  TrendingUp,
   BarChart3,
-  Calendar,
-  RotateCcw
+  Calendar
 } from 'lucide-react';
 import Mascot from '../components/Mascot';
 import { getDashboardStats } from '../services/api';
+
+// [[documentTitle, topics], ...] in the order documents first appear
+function groupByDocument(topics) {
+  const groups = new Map();
+  for (const topic of topics) {
+    const title = topic.document_title || 'Module';
+    if (!groups.has(title)) groups.set(title, []);
+    groups.get(title).push(topic);
+  }
+  return [...groups.entries()];
+}
 
 export default function ProgressView({ 
   onStartDueCards, 
@@ -36,7 +42,7 @@ export default function ProgressView({
     try {
       const data = await getDashboardStats();
       setStats(data);
-    } catch (err) {
+    } catch {
       showToast('error', 'Could not load dashboard stats.');
     } finally {
       setIsLoading(false);
@@ -255,8 +261,11 @@ export default function ProgressView({
             No topic data yet. Take a quiz first to see your stats!
           </div>
         ) : (
-          <div className="space-y-4">
-            {stats.topic_mastery.map((topic, index) => {
+          <div className="space-y-6">
+            {groupByDocument(stats.topic_mastery).map(([documentTitle, docTopics]) => (
+            <section key={documentTitle} className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-500">{documentTitle}</h3>
+            {docTopics.map((topic) => {
               const isMastered = topic.status === "mastered";
               const isReviewing = topic.status === "reviewing";
               const isUntested = topic.status === "untested";
@@ -281,7 +290,7 @@ export default function ProgressView({
 
               return (
                 <div
-                  key={index}
+                  key={topic.topic_id}
                   className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200 hover:border-slate-300 transition space-y-2.5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -297,6 +306,12 @@ export default function ProgressView({
                     <div className="flex items-center gap-3 text-xs text-slate-500">
                       <span>{topic.correct_count} of {topic.total_answered} correct</span>
                       <span className="font-bold text-slate-900">{topic.mastery_percent}%</span>
+                      <button
+                        onClick={() => onSelectTopicQuiz(topic.document_id, topic.topic_id)}
+                        className="px-2.5 py-1 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-100 transition"
+                      >
+                        Quiz
+                      </button>
                     </div>
                   </div>
 
@@ -310,6 +325,8 @@ export default function ProgressView({
                 </div>
               );
             })}
+            </section>
+            ))}
           </div>
         )}
       </div>

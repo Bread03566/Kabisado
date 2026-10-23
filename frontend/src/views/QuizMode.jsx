@@ -10,10 +10,8 @@ import {
   ArrowRight, 
   BrainCircuit, 
   Award,
-  Layers,
   Clock,
   Volume2,
-  Mic,
   AlertTriangle,
   Timer
 } from 'lucide-react';
@@ -30,7 +28,8 @@ export default function QuizMode({
   onGoToFlashcards,
   showToast 
 }) {
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState([]); // the quiz being taken right now
+  const [savedQuestions, setSavedQuestions] = useState([]); // every question made for this module
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
@@ -48,7 +47,7 @@ export default function QuizMode({
   const [isExamMode, setIsExamMode] = useState(false);
   const [timerDuration, setTimerDuration] = useState(10); // in minutes
   const [secondsRemaining, setSecondsRemaining] = useState(null);
-  const timerRef = useRef(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (isWeakSpotMode) {
@@ -58,29 +57,23 @@ export default function QuizMode({
     }
   }, [documentId, initialTopicId, isWeakSpotMode]);
 
-  // Exam Timer Effect
+  // Exam Timer Effect: tick once a second, auto-submit when time runs out
   useEffect(() => {
-    if (secondsRemaining === null || secondsRemaining <= 0 || quizResult) return;
-
-    timerRef.current = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          handleFinishQuiz(); // Auto-submit on time up!
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timerRef.current);
+    if (secondsRemaining === null || quizResult) return;
+    if (secondsRemaining <= 0) {
+      handleFinishQuiz();
+      return;
+    }
+    const tick = setTimeout(() => setSecondsRemaining((prev) => prev - 1), 1000);
+    return () => clearTimeout(tick);
   }, [secondsRemaining, quizResult]);
 
   const loadQuestions = async () => {
     setIsLoading(true);
     try {
       const data = await getQuestions(documentId, initialTopicId);
-      setQuestions(data);
+      setSavedQuestions(data);
+      setQuestions([]);
       resetQuizState();
     } catch {
       showToast('error', 'Could not load quiz questions.');
@@ -97,6 +90,19 @@ export default function QuizMode({
     setSecondsRemaining(null);
   };
 
+  const startQuiz = (quizQuestions) => {
+    setQuestions(quizQuestions);
+    resetQuizState();
+    if (isExamMode) {
+      setSecondsRemaining(timerDuration * 60);
+    }
+  };
+
+  const handlePracticeSaved = () => {
+    const picked = [...savedQuestions].sort(() => Math.random() - 0.5).slice(0, targetCount);
+    startQuiz(picked);
+  };
+
   const handleGenerateQuestions = async () => {
     setIsGenerating(true);
     try {
@@ -107,13 +113,8 @@ export default function QuizMode({
         initialTopicId, 
         selectedDifficulty
       );
-      setQuestions(newQuestions);
-      resetQuizState();
-
-      if (isExamMode) {
-        setSecondsRemaining(timerDuration * 60);
-      }
-
+      setSavedQuestions((prev) => [...newQuestions, ...prev]);
+      startQuiz(newQuestions);
       showToast('success', `${newQuestions.length} questions are ready for you!`);
     } catch (err) {
       showToast('error', err.message || 'Failed to create quiz questions.');
@@ -127,8 +128,8 @@ export default function QuizMode({
     try {
       showToast('info', 'Building a Weak-Spot Quiz from the topics you struggle with...');
       const weakQuestions = await generateWeakSpotQuiz(documentId);
-      setQuestions(weakQuestions);
-      resetQuizState();
+      setSavedQuestions((prev) => [...weakQuestions, ...prev]);
+      startQuiz(weakQuestions);
       showToast('success', 'Your Weak-Spot Quiz is ready! Let\'s go!');
     } catch (err) {
       showToast('error', err.message || 'Failed to create the weak-spot quiz.');
@@ -160,7 +161,9 @@ export default function QuizMode({
   };
 
   const handleFinishQuiz = async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSecondsRemaining(null);
     setIsSubmitting(true);
     try {
       const answersPayload = questions.map((q) => ({
@@ -186,6 +189,7 @@ export default function QuizMode({
     } catch {
       showToast('error', 'There was a problem submitting your quiz results.');
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -384,6 +388,19 @@ export default function QuizMode({
               <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
               <span>Try the Weak-Spot Quiz</span>
             </button>
+
+            {savedQuestions.length > 0 && (
+              <button
+                onClick={handlePracticeSaved}
+                disabled={isGenerating}
+                className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>
+                  Practice {Math.min(targetCount, savedQuestions.length)} saved questions ({savedQuestions.length} in total)
+                </span>
+              </button>
+            )}
           </div>
         </div>
       ) : quizResult ? (
@@ -413,11 +430,22 @@ export default function QuizMode({
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-4 border-t border-slate-100">
               <button
-                onClick={resetQuizState}
+                onClick={() => startQuiz(questions)}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Retake Quiz</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setQuestions([]);
+                  resetQuizState();
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl border border-slate-200 transition"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>New Quiz</span>
               </button>
 
               <button
@@ -619,10 +647,12 @@ export default function QuizMode({
           <div className="flex items-center justify-end">
             <button
               onClick={handleNext}
-              disabled={!hasAnsweredCurrent}
+              disabled={!hasAnsweredCurrent || isSubmitting}
               className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition disabled:opacity-40"
             >
-              <span>{currentIndex === questions.length - 1 ? 'View Score Report' : 'Next Question'}</span>
+              <span>
+                {isSubmitting ? 'Scoring your quiz...' : currentIndex === questions.length - 1 ? 'View Score Report' : 'Next Question'}
+              </span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

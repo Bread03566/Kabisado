@@ -4,7 +4,7 @@ from typing import List, Optional
 import datetime
 
 from app.database import get_db
-from app.models.models import Document, Topic, Flashcard
+from app.models.models import Document, Flashcard, ReviewLog
 from app.schemas.schemas import (
     FlashcardGenerateRequest,
     FlashcardCreate,
@@ -14,8 +14,38 @@ from app.schemas.schemas import (
     MessageResponse
 )
 from app.services.ai_service import ai_service
+from app.services.topic_planner import plan_counts, run_per_topic, topics_for_generation
 
 router = APIRouter(tags=["flashcards"])
+
+
+def utc_now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def to_response(card: Flashcard) -> FlashcardResponse:
+    return FlashcardResponse(
+        id=card.id,
+        document_id=card.document_id,
+        topic_id=card.topic_id,
+        topic_title=card.topic.title if card.topic else None,
+        front=card.front,
+        back=card.back,
+        card_type=card.card_type,
+        ease_factor=card.ease_factor,
+        interval=card.interval,
+        repetitions=card.repetitions,
+        next_review=card.next_review,
+        created_at=card.created_at
+    )
+
+
+def get_card_or_404(db: Session, card_id: int) -> Flashcard:
+    card = db.query(Flashcard).filter(Flashcard.id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Flashcard not found.")
+    return card
+
 
 @router.get("/api/flashcards/due", response_model=List[FlashcardResponse])
 def get_due_flashcards(
@@ -25,30 +55,10 @@ def get_due_flashcards(
     """
     Get all flashcards due for SM-2 review today (next_review <= now).
     """
-    now = datetime.datetime.now(datetime.timezone.utc)
-    query = db.query(Flashcard).filter(Flashcard.next_review <= now)
+    query = db.query(Flashcard).filter(Flashcard.next_review <= utc_now())
     if document_id:
         query = query.filter(Flashcard.document_id == document_id)
-
-    cards = query.order_by(Flashcard.next_review.asc()).all()
-    results = []
-    for c in cards:
-        t_title = c.topic.title if c.topic else None
-        results.append(FlashcardResponse(
-            id=c.id,
-            document_id=c.document_id,
-            topic_id=c.topic_id,
-            topic_title=t_title,
-            front=c.front,
-            back=c.back,
-            card_type=c.card_type,
-            ease_factor=c.ease_factor,
-            interval=c.interval,
-            repetitions=c.repetitions,
-            next_review=c.next_review,
-            created_at=c.created_at
-        ))
-    return results
+    return [to_response(c) for c in query.order_by(Flashcard.next_review.asc()).all()]
 
 
 @router.post("/api/documents/{document_id}/flashcards/generate", response_model=List[FlashcardResponse])
@@ -59,6 +69,7 @@ async def generate_flashcards(
 ):
     """
     Generate AI flashcards from document topics and save to database.
+    The requested count is spread across topics, so asking for 8 cards gives about 8 cards.
     """
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
@@ -67,37 +78,21 @@ async def generate_flashcards(
             detail="Document not found."
         )
 
-    topics_to_process = []
-    if payload.topic_id:
-        topic = db.query(Topic).filter(Topic.id == payload.topic_id, Topic.document_id == doc.id).first()
-        if not topic:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found.")
-        topics_to_process.append(topic)
-    else:
-        topics_to_process = db.query(Topic).filter(Topic.document_id == doc.id).order_by(Topic.order_index).all()
-        if not topics_to_process:
-            # Fallback if no topic rows exist
-            topic = Topic(document_id=doc.id, title="Pangkalahatan", content=doc.raw_text, order_index=0)
-            db.add(topic)
-            db.commit()
-            db.refresh(topic)
-            topics_to_process.append(topic)
+    topics = topics_for_generation(db, doc, payload.topic_id)
 
-    # Calculate cards per topic
-    cards_per_topic = max(2, payload.count // len(topics_to_process)) if len(topics_to_process) > 0 else payload.count
-
-    created_cards = []
-    for topic in topics_to_process:
-        generated = await ai_service.generate_flashcards(
+    async def generate(topic, count):
+        return await ai_service.generate_flashcards(
             document_title=doc.title,
             topic_title=topic.title,
             topic_content=topic.content,
             topic_id=topic.id,
-            count=cards_per_topic,
+            count=count,
             card_type=payload.card_type or "mixed"
         )
 
-        for card_data in generated:
+    created_cards = []
+    for topic, count, generated in await run_per_topic(plan_counts(topics, payload.count), generate):
+        for card_data in generated[:count]:
             fc = Flashcard(
                 document_id=doc.id,
                 topic_id=topic.id,
@@ -107,35 +102,21 @@ async def generate_flashcards(
                 ease_factor=2.5,
                 interval=0,
                 repetitions=0,
-                next_review=datetime.datetime.now(datetime.timezone.utc)
+                next_review=utc_now()
             )
             db.add(fc)
             created_cards.append(fc)
 
+    if not created_cards:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Kabi couldn't find enough facts in this text to make flashcards. Try a longer module, or add cards yourself."
+        )
+
     db.commit()
     for c in created_cards:
         db.refresh(c)
-
-    # Attach topic_title for response
-    results = []
-    for c in created_cards:
-        t_title = c.topic.title if c.topic else None
-        results.append(FlashcardResponse(
-            id=c.id,
-            document_id=c.document_id,
-            topic_id=c.topic_id,
-            topic_title=t_title,
-            front=c.front,
-            back=c.back,
-            card_type=c.card_type,
-            ease_factor=c.ease_factor,
-            interval=c.interval,
-            repetitions=c.repetitions,
-            next_review=c.next_review,
-            created_at=c.created_at
-        ))
-
-    return results
+    return [to_response(c) for c in created_cards]
 
 @router.get("/api/documents/{document_id}/flashcards", response_model=List[FlashcardResponse])
 def get_document_flashcards(
@@ -149,26 +130,7 @@ def get_document_flashcards(
     query = db.query(Flashcard).filter(Flashcard.document_id == document_id)
     if topic_id:
         query = query.filter(Flashcard.topic_id == topic_id)
-    
-    cards = query.order_by(Flashcard.created_at.desc()).all()
-    results = []
-    for c in cards:
-        t_title = c.topic.title if c.topic else None
-        results.append(FlashcardResponse(
-            id=c.id,
-            document_id=c.document_id,
-            topic_id=c.topic_id,
-            topic_title=t_title,
-            front=c.front,
-            back=c.back,
-            card_type=c.card_type,
-            ease_factor=c.ease_factor,
-            interval=c.interval,
-            repetitions=c.repetitions,
-            next_review=c.next_review,
-            created_at=c.created_at
-        ))
-    return results
+    return [to_response(c) for c in query.order_by(Flashcard.created_at.desc()).all()]
 
 @router.post("/api/flashcards", response_model=FlashcardResponse, status_code=status.HTTP_201_CREATED)
 def create_custom_flashcard(
@@ -178,6 +140,9 @@ def create_custom_flashcard(
     """
     Manually create a custom flashcard.
     """
+    if not db.query(Document).filter(Document.id == payload.document_id).first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+
     card = Flashcard(
         document_id=payload.document_id,
         topic_id=payload.topic_id,
@@ -187,26 +152,12 @@ def create_custom_flashcard(
         ease_factor=2.5,
         interval=0,
         repetitions=0,
-        next_review=datetime.datetime.now(datetime.timezone.utc)
+        next_review=utc_now()
     )
     db.add(card)
     db.commit()
     db.refresh(card)
-    t_title = card.topic.title if card.topic else None
-    return FlashcardResponse(
-        id=card.id,
-        document_id=card.document_id,
-        topic_id=card.topic_id,
-        topic_title=t_title,
-        front=card.front,
-        back=card.back,
-        card_type=card.card_type,
-        ease_factor=card.ease_factor,
-        interval=card.interval,
-        repetitions=card.repetitions,
-        next_review=card.next_review,
-        created_at=card.created_at
-    )
+    return to_response(card)
 
 @router.put("/api/flashcards/{card_id}", response_model=FlashcardResponse)
 def update_flashcard(
@@ -217,9 +168,7 @@ def update_flashcard(
     """
     Edit a flashcard's front, back, or topic.
     """
-    card = db.query(Flashcard).filter(Flashcard.id == card_id).first()
-    if not card:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Flashcard not found.")
+    card = get_card_or_404(db, card_id)
 
     if payload.front is not None:
         card.front = payload.front.strip()
@@ -232,30 +181,14 @@ def update_flashcard(
 
     db.commit()
     db.refresh(card)
-    t_title = card.topic.title if card.topic else None
-    return FlashcardResponse(
-        id=card.id,
-        document_id=card.document_id,
-        topic_id=card.topic_id,
-        topic_title=t_title,
-        front=card.front,
-        back=card.back,
-        card_type=card.card_type,
-        ease_factor=card.ease_factor,
-        interval=card.interval,
-        repetitions=card.repetitions,
-        next_review=card.next_review,
-        created_at=card.created_at
-    )
+    return to_response(card)
 
 @router.delete("/api/flashcards/{card_id}", response_model=MessageResponse)
 def delete_flashcard(card_id: int, db: Session = Depends(get_db)):
     """
     Delete a flashcard.
     """
-    card = db.query(Flashcard).filter(Flashcard.id == card_id).first()
-    if not card:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found.")
+    card = get_card_or_404(db, card_id)
     db.delete(card)
     db.commit()
     return MessageResponse(message="Flashcard deleted successfully.")
@@ -274,12 +207,10 @@ def review_flashcard_sm2(
     - 'good': normal interval progression.
     - 'easy': bonus interval progression and ease factor boost.
     """
-    card = db.query(Flashcard).filter(Flashcard.id == card_id).first()
-    if not card:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found.")
+    card = get_card_or_404(db, card_id)
 
     rating = payload.rating.lower()
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = utc_now()
 
     if rating == "again":
         card.repetitions = 0
@@ -311,21 +242,7 @@ def review_flashcard_sm2(
         card.repetitions += 1
 
     card.next_review = now + datetime.timedelta(days=card.interval)
+    db.add(ReviewLog(flashcard_id=card.id, rating=rating, reviewed_at=now))
     db.commit()
     db.refresh(card)
-
-    t_title = card.topic.title if card.topic else None
-    return FlashcardResponse(
-        id=card.id,
-        document_id=card.document_id,
-        topic_id=card.topic_id,
-        topic_title=t_title,
-        front=card.front,
-        back=card.back,
-        card_type=card.card_type,
-        ease_factor=card.ease_factor,
-        interval=card.interval,
-        repetitions=card.repetitions,
-        next_review=card.next_review,
-        created_at=card.created_at
-    )
+    return to_response(card)
