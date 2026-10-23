@@ -385,8 +385,9 @@ export default function FlashcardStudyMode({
 
           {/* 3D Flip Card Container */}
           <div
+            key={currentCard?.id}
             onClick={() => setIsFlipped(!isFlipped)}
-            className="perspective-1000 w-full min-h-[320px] sm:min-h-[360px] cursor-pointer select-none group"
+            className="animate-in fade-in slide-in-from-right-4 perspective-1000 w-full min-h-[320px] sm:min-h-[360px] cursor-pointer select-none group"
           >
             <div
               className={`relative w-full h-full min-h-[320px] sm:min-h-[360px] transition-transform duration-500 transform-style-3d ${

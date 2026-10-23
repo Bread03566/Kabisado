@@ -88,7 +88,7 @@ export default function ProgressView({
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Streak */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between">
+        <div style={{ '--i': 0 }} className="stagger-item bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between hover:-translate-y-0.5 hover:shadow-md transition duration-200">
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Study Streak
@@ -109,7 +109,7 @@ export default function ProgressView({
         </div>
 
         {/* Cards Due Today */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between">
+        <div style={{ '--i': 1 }} className="stagger-item bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between hover:-translate-y-0.5 hover:shadow-md transition duration-200">
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Due Flashcards
@@ -140,7 +140,7 @@ export default function ProgressView({
         </div>
 
         {/* Overall Accuracy */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between">
+        <div style={{ '--i': 2 }} className="stagger-item bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between hover:-translate-y-0.5 hover:shadow-md transition duration-200">
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Quiz Accuracy
@@ -160,7 +160,7 @@ export default function ProgressView({
         </div>
 
         {/* Total Modules Mastered */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between">
+        <div style={{ '--i': 3 }} className="stagger-item bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between hover:-translate-y-0.5 hover:shadow-md transition duration-200">
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Topics Tracked
@@ -231,7 +231,7 @@ export default function ProgressView({
                 <div className="pt-2 border-t border-slate-100">
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                     <div 
-                      className="bg-rose-500 h-full rounded-full" 
+                      className="grow-bar bg-rose-500 h-full rounded-full" 
                       style={{ width: `${w.mastery_percent}%` }}
                     />
                   </div>
@@ -318,7 +318,7 @@ export default function ProgressView({
                   {/* Progress bar */}
                   <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full rounded-full transition-all duration-500 ${barColor}`} 
+                      className={`grow-bar h-full rounded-full transition-all duration-500 ${barColor}`} 
                       style={{ width: `${topic.mastery_percent}%` }}
                     />
                   </div>

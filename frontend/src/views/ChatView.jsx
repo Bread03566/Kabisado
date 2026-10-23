@@ -214,7 +214,7 @@ export default function ChatView({
           return (
             <div
               key={idx}
-              className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
+              className={`animate-in fade-in slide-in-from-bottom-2 flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
                 <Mascot mood={m.found_in_document ? "studying" : "shocked"} size="sm" className="shrink-0 mt-1" />

@@ -9,6 +9,7 @@ from google import genai
 from google.genai import types
 from google.genai import errors as genai_errors
 from app.config import settings
+from app.services.segmenter_service import segmenter_service
 
 logger = logging.getLogger(__name__)
 
@@ -231,9 +232,9 @@ class AIService:
             return self._fallback_summary(document_title, text_content, length)
 
         length_instructions = {
-            "brief": "Provide a high-impact, concise summary in 2 to 3 punchy paragraphs focusing only on core takeaways.",
-            "standard": "Provide a balanced, comprehensive summary in 4 to 6 structured paragraphs covering the major concepts and connections.",
-            "detailed": "Provide a deep-dive, thorough summary breaking down all essential sub-topics, principles, mechanisms, and examples found in the text."
+            "brief": "Keep it short: 2 to 3 sections with 2 to 3 bullets each, covering only the core takeaways.",
+            "standard": "Use 3 to 5 sections with 3 to 4 bullets each, covering the major concepts and how they connect.",
+            "detailed": "Use 5 to 7 sections with 3 to 6 bullets each, covering every essential sub-topic, mechanism, and example in the text."
         }
 
         system_prompt = (
@@ -243,9 +244,14 @@ class AIService:
             "LANGUAGE: Always write the summary and key terms in English, even if the source text is in another language. "
             "CRITICAL RULE: Base your summary and key terms strictly on the provided text. Do NOT invent facts or hallucinate external information. "
             "Ignore page headers, footers, page numbers, and copyright lines. "
+            "SUMMARY FORMAT (markdown, the app turns it into study cards, so follow it exactly):\n"
+            "- Start with ONE short paragraph (1 to 2 sentences, no heading) stating the big idea of the whole lesson.\n"
+            "- Then one '## ' heading per major concept, in the order the text teaches them. Headings are short (2 to 6 words).\n"
+            "- Under each heading, '- ' bullet points only (no paragraphs): one fact or idea per bullet, at most 30 words. Put the most important word or phrase in **bold**.\n"
+            "- Optionally end a section with one line '> Exam tip: ...' naming something likely to be tested (a date, a distinction, a common mix-up).\n"
             "Always respond in valid, strict JSON with this exact schema:\n"
             "{\n"
-            '  "summary": "Formatted markdown text of the summary...",\n'
+            '  "summary": "Markdown following the SUMMARY FORMAT...",\n'
             '  "key_terms": [\n'
             '    {"term": "Term name", "definition": "Clear concise definition from the text"}\n'
             "  ]\n"
@@ -430,20 +436,27 @@ class AIService:
     # These keep the app useful offline or before the student sets GEMINI_API_KEY.
 
     def _fallback_summary(self, title: str, text: str, length: str) -> Dict[str, Any]:
-        """Extractive summary: the text's most representative sentences, as bullet points."""
-        point_count = {"brief": 4, "standard": 8, "detailed": 14}.get(length, 8)
-        points = _key_sentences(text, point_count)
-        if points:
-            body = "\n".join(f"- {p}" for p in points)
-        else:
-            body = _normalize(text)[:800]
+        """
+        Extractive summary in the same shape the AI writes: a one-line big idea, then one
+        section per topic with that topic's most representative sentences as bullets.
+        """
+        max_sections, bullets_per_section = {"brief": (4, 2), "standard": (6, 3), "detailed": (12, 5)}.get(length, (6, 3))
 
-        summary_body = (
-            f"### Key points from {title}\n\n"
-            f"{body}\n\n"
-            f"> *Note from Kabi: these points are taken directly from your module. "
-            f"Connect an AI key for a written summary.*"
-        )
+        overview = _key_sentences(text, 1)
+        parts = [overview[0] if overview else f"Key points from {title}."]
+        for topic in segmenter_service.segment_text(text, document_title=title)[:max_sections]:
+            bullets = _key_sentences(topic["content"], bullets_per_section)
+            if not bullets:
+                continue
+            parts.append(f"## {topic['title']}")
+            parts.append("\n".join(f"- {YEAR_PATTERN.sub(r'**\1**', b)}" for b in bullets))
+            years = list(dict.fromkeys(y for b in bullets for y in YEAR_PATTERN.findall(b)))
+            if years:
+                parts.append(f"> Exam tip: Expect a question on **{', '.join(years)}**. Know what happened then.")
+
+        if len(parts) == 1:
+            parts.append(_normalize(text)[:800])
+        summary_body = "\n\n".join(parts)
         key_terms = [{"term": t, "definition": d} for t, d in _extract_definitions(text)[:10]]
         return {"summary": summary_body, "key_terms": key_terms}
 

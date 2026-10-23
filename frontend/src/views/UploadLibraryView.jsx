@@ -345,11 +345,12 @@ export default function UploadLibraryView({
         ) : (
           /* Grid of Document Cards */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {documents.map((doc) => (
+            {documents.map((doc, idx) => (
               <div
                 key={doc.id}
                 onClick={() => onSelectDoc(doc)}
-                className="group bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md hover:border-amber-400 transition cursor-pointer flex flex-col justify-between"
+                style={{ '--i': idx }}
+                className="stagger-item group bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 transition duration-200 cursor-pointer flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">

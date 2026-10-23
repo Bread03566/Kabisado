@@ -559,7 +559,7 @@ export default function QuizMode({
           </div>
 
           {/* Question Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md space-y-6">
+          <div key={currentQ?.id} className="animate-in fade-in slide-in-from-right-4 bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md space-y-6">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                 Choose one correct answer
@@ -599,6 +599,8 @@ export default function QuizMode({
                   letterStyle = 'bg-emerald-600 text-white';
                 }
 
+                // Right answer pulses, a wrong pick shakes
+                const feedbackAnim = hasAnsweredCurrent ? (isCorrect ? 'answer-correct' : isSelected ? 'answer-wrong' : '') : '';
                 const letters = ['A', 'B', 'C', 'D'];
 
                 return (
@@ -606,7 +608,7 @@ export default function QuizMode({
                     key={cIdx}
                     onClick={() => handleSelectChoice(cIdx)}
                     disabled={hasAnsweredCurrent}
-                    className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between gap-3 text-xs sm:text-sm select-none ${btnStyle}`}
+                    className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between gap-3 text-xs sm:text-sm select-none ${btnStyle} ${feedbackAnim}`}
                   >
                     <div className="flex items-center gap-3">
                       <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition ${letterStyle}`}>

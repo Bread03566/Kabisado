@@ -1,69 +1,150 @@
 @import "tailwindcss";
 
 /*
- * Kabisado olive palette: khaki #D9D28B, sage #B2BD7E, olive #8E9162, moss #6A795D.
+ * Kabisado brown palette: mist #E4E0E1, sand #D6C0B3, mocha #AB886D, cocoa #493628.
  *
  * Instead of rewriting every class, the Tailwind scales the app uses are
  * remapped here onto the palette (light shades for surfaces, dark shades for
- * text). Moss is the button color because it is the only palette color dark
- * enough for white text; body text uses deeper olives derived from the palette.
- * Status colors (emerald, rose, blue...) keep Tailwind's defaults.
+ * text). Cocoa is both the text color and the button color; mocha is a
+ * secondary accent and is never used behind small text, since white on mocha
+ * is too low-contrast. Status colors (emerald, rose, blue...) keep Tailwind's defaults.
  */
 @theme {
-  --color-khaki: #D9D28B;
-  --color-sage: #B2BD7E;
-  --color-olive: #8E9162;
-  --color-moss: #6A795D;
-  --color-ink: #1F2318; /* modal backdrops */
+  --color-mist: #E4E0E1;
+  --color-sand: #D6C0B3;
+  --color-mocha: #AB886D;
+  --color-cocoa: #493628;
+  --color-ink: #2A1F17; /* modal backdrops */
 
-  /* Neutrals, tinted toward the palette */
-  --color-slate-50: #F6F4E3;
-  --color-slate-100: #EEEBD3;
-  --color-slate-200: #E0DCBA;
-  --color-slate-300: #CBC79E;
-  --color-slate-400: #9A9C78;
-  --color-slate-500: #6E7158;
-  --color-slate-600: #5B5E48;
-  --color-slate-700: #4A4D3A;
-  --color-slate-800: #3A3D2E;
-  --color-slate-900: #2A2D21;
-  --color-slate-950: #1C1E16;
+  /* Neutrals, warmed toward the palette */
+  --color-slate-50: #E4E0E1;
+  --color-slate-100: #DCD6D5;
+  --color-slate-200: #DDD3CD;
+  --color-slate-300: #D6C0B3;
+  --color-slate-400: #AB886D;
+  --color-slate-500: #7A6151;
+  --color-slate-600: #65503F;
+  --color-slate-700: #574332;
+  --color-slate-800: #493628;
+  --color-slate-900: #3A2B20;
+  --color-slate-950: #2A1F17;
 
-  /* Primary accent (was amber): khaki surfaces, moss buttons */
-  --color-amber-50: #FAF8E8;
-  --color-amber-100: #F1EDC6;
-  --color-amber-200: #D9D28B;
-  --color-amber-300: #C9C886;
-  --color-amber-400: #B2BD7E;
-  --color-amber-500: #6A795D;
-  --color-amber-600: #6A795D;
-  --color-amber-700: #5A6850;
-  --color-amber-800: #4B5743;
-  --color-amber-900: #3D4736;
-  --color-amber-950: #2E3628;
-  --color-orange-500: #7E8A5F;
-  --color-orange-600: #75825A;
+  /* Primary accent (was amber): sand surfaces, cocoa buttons */
+  --color-amber-50: #F3EEEA;
+  --color-amber-100: #EADDD4;
+  --color-amber-200: #D6C0B3;
+  --color-amber-300: #C4A693;
+  --color-amber-400: #AB886D;
+  --color-amber-500: #493628;
+  --color-amber-600: #493628;
+  --color-amber-700: #5A4535;
+  --color-amber-800: #493628;
+  --color-amber-900: #3A2B20;
+  --color-amber-950: #2A1F17;
+  --color-orange-500: #6B5140;
+  --color-orange-600: #5E4636;
 
-  /* Secondary accent (was indigo): olive */
-  --color-indigo-50: #F4F4EA;
-  --color-indigo-100: #E8E9D4;
-  --color-indigo-200: #D2D4B2;
-  --color-indigo-300: #B7BA8F;
-  --color-indigo-400: #A0A374;
-  --color-indigo-500: #8E9162;
-  --color-indigo-600: #737650;
-  --color-indigo-700: #5F6243;
-  --color-indigo-800: #4C4F36;
-  --color-indigo-900: #3A3D2A;
-  --color-indigo-950: #2A2C1F;
+  /* Secondary accent (was indigo): mocha */
+  --color-indigo-50: #F5F0EC;
+  --color-indigo-100: #ECE1D9;
+  --color-indigo-200: #DCC9BB;
+  --color-indigo-300: #C9AE9A;
+  --color-indigo-400: #B89880;
+  --color-indigo-500: #AB886D;
+  --color-indigo-600: #8A6A52;
+  --color-indigo-700: #745742;
+  --color-indigo-800: #5F4636;
+  --color-indigo-900: #4A372A;
+  --color-indigo-950: #36281F;
 
   /* Decorative accent on the dashboard's "Topics tracked" tile */
-  --color-purple-50: #EEF0E0;
-  --color-purple-600: #6A795D;
+  --color-purple-50: #F3EEEA;
+  --color-purple-600: #AB886D;
 }
 
 :root {
   color-scheme: light;
+}
+
+/* ==================== Motion ==================== */
+
+@keyframes enter {
+  from {
+    opacity: var(--enter-opacity, 1);
+    transform: translate(var(--enter-x, 0), var(--enter-y, 0)) scale(var(--enter-scale, 1));
+  }
+}
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(10px); }
+}
+@keyframes toast-in {
+  0% { opacity: 0; transform: translateX(24px); }
+  70% { opacity: 1; transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes correct-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(16 185 129 / 0.45); }
+  100% { box-shadow: 0 0 0 12px rgb(16 185 129 / 0); }
+}
+@keyframes wrong-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+}
+@keyframes pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@layer utilities {
+  /* Entrance helpers (also used by older markup: "animate-in fade-in zoom-in-95") */
+  .animate-in { animation: enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  .fade-in { --enter-opacity: 0; }
+  .zoom-in-95 { --enter-scale: 0.95; }
+  .slide-in-from-top-2 { --enter-y: -0.5rem; }
+  .slide-in-from-right-4 { --enter-x: 1rem; }
+  .slide-in-from-left-4 { --enter-x: -1rem; }
+  .slide-in-from-bottom-2 { --enter-y: 0.5rem; }
+
+  /* Screen and tab changes */
+  .view-enter { animation: view-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  /* Lists that reveal one item after another; set --i on each item */
+  .stagger-item { animation: view-enter 380ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+
+  .animate-bounce-short { animation: toast-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  .mascot-bob { animation: bob 3.2s ease-in-out infinite; }
+  .answer-correct { animation: correct-pulse 700ms ease-out 1; }
+  .answer-wrong { animation: wrong-shake 420ms ease-in-out 1; }
+  .grow-bar { transform-origin: left; animation: grow-x 900ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  .pop-in { animation: pop 320ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+}
+
+/* Every enabled button gives a little press feedback */
+@layer base {
+  button:not(:disabled) {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 150ms;
+  }
+  button:not(:disabled):active {
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer utilities {
@@ -99,9 +180,9 @@ body {
   background: var(--color-slate-100);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-sage);
+  background: var(--color-sand);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-olive);
+  background: var(--color-mocha);
 }

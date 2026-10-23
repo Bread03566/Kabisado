@@ -104,6 +104,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 pb-16">
+        <div key={activeView} className="view-enter">
         {activeView === 'library' && (
           <UploadLibraryView
             documents={documents}
@@ -163,6 +164,7 @@ export default function App() {
             showToast={showToast}
           />
         )}
+        </div>
       </main>
 
       {/* Footer */}

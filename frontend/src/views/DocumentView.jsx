@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
-  FileText, 
   Sparkles, 
   BrainCircuit, 
   HelpCircle, 
@@ -13,7 +12,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import Mascot from '../components/Mascot';
-import Markdown from '../components/Markdown';
+import SummaryView from '../components/SummaryView';
 import { summarizeDocument, getDocument } from '../services/api';
 
 import StudyPlanModal from '../components/StudyPlanModal';
@@ -219,7 +218,7 @@ export default function DocumentView({
 
       {/* TAB 1: SUMMARY & KEY TERMS */}
       {activeTab === 'summary' && (
-        <div className="space-y-6">
+        <div key="summary" className="view-enter space-y-6">
           {/* Summary Control Bar */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -291,22 +290,14 @@ export default function DocumentView({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Formatted Summary Box */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
-                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base sm:text-lg">
-                    <FileText className="w-5 h-5 text-amber-500" />
-                    <span>Lesson Summary</span>
-                  </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 capitalize">
-                    {summaryLength}
-                  </span>
-                </div>
-
-                <Markdown className="max-w-prose text-sm sm:text-[15px] leading-relaxed text-slate-700">
-                  {currentSummary}
-                </Markdown>
-              </div>
+              <SummaryView
+                key={`${summaryLength}-${currentSummary.length}`}
+                summary={currentSummary}
+                keyTerms={keyTerms}
+                length={summaryLength}
+                storageKey={`kabisado:reviewed:${documentId}:${summaryLength}`}
+                onStartQuiz={() => onStartQuiz(doc.id)}
+              />
 
               {/* Key Terms Section */}
               {keyTerms.length > 0 && (
@@ -323,7 +314,8 @@ export default function DocumentView({
                     {keyTerms.map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-indigo-300 transition hover:bg-indigo-50/20"
+                        className="stagger-item p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-indigo-300 transition hover:bg-indigo-50/20 hover:-translate-y-0.5"
+                        style={{ '--i': idx }}
                       >
                         <h4 className="font-bold text-slate-900 text-xs sm:text-sm text-indigo-950 flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
@@ -344,7 +336,7 @@ export default function DocumentView({
 
       {/* TAB 2: TOPICS / SECTIONS */}
       {activeTab === 'topics' && (
-        <div className="space-y-4">
+        <div key="topics" className="view-enter space-y-4">
           <p className="text-xs text-slate-500">
             Kabi automatically split your module into {doc.topics?.length || 0} sections so you can study one topic at a time:
           </p>
@@ -438,7 +430,7 @@ export default function DocumentView({
 
       {/* TAB 3: CHAT (ASK KABISADO) */}
       {activeTab === 'chat' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-10 text-center space-y-4 shadow-xs">
+        <div key="chat" className="view-enter bg-white rounded-3xl border border-slate-200 p-10 text-center space-y-4 shadow-xs">
           <Mascot mood="studying" size="lg" />
           <div className="max-w-md mx-auto space-y-1">
             <h3 className="font-extrabold text-slate-900 text-lg">

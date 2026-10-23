@@ -75,7 +75,7 @@ export default function Mascot({ mood = 'sleepy', size = 'md', message = null, c
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <div className={`relative shrink-0 ${sizeClasses[size] || sizeClasses.md} select-none`}>
+      <div className={`relative shrink-0 ${sizeClasses[size] || sizeClasses.md} select-none ${size === 'sm' ? '' : 'mascot-bob'}`}>
         <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
           {/* Owl Body */}
           <ellipse cx="50" cy="55" rx="36" ry="38" fill="#92400e" stroke="#451a03" strokeWidth="3" />
@@ -91,7 +91,7 @@ export default function Mascot({ mood = 'sleepy', size = 'md', message = null, c
           <path d="M 78 30 L 68 12 L 60 24 Z" fill="#78350f" stroke="#451a03" strokeWidth="2" />
 
           {/* Nightcap / Study Hat (Purple with pom-pom) */}
-          <path d="M 30 22 Q 50 14 70 22 Q 55 5 45 4 Z" fill="#D9D28B" stroke="#6A795D" strokeWidth="2" />
+          <path d="M 30 22 Q 50 14 70 22 Q 55 5 45 4 Z" fill="#D6C0B3" stroke="#493628" strokeWidth="2" />
           <circle cx="43" cy="4" r="4.5" fill="#fbbf24" stroke="#d97706" strokeWidth="1.5" />
 
           {/* Eyes (rendered dynamically) */}
@@ -107,15 +107,15 @@ export default function Mascot({ mood = 'sleepy', size = 'md', message = null, c
           {/* Sleepy Zzz animation if sleepy */}
           {mood === 'sleepy' && (
             <g className="animate-pulse">
-              <text x="76" y="22" fill="#6A795D" fontSize="12" fontWeight="bold">Z</text>
-              <text x="86" y="14" fill="#8E9162" fontSize="9" fontWeight="bold">z</text>
+              <text x="76" y="22" fill="#493628" fontSize="12" fontWeight="bold">Z</text>
+              <text x="86" y="14" fill="#AB886D" fontSize="9" fontWeight="bold">z</text>
             </g>
           )}
         </svg>
       </div>
 
       {message && (
-        <div className="relative bg-amber-50/90 border border-amber-200 text-amber-950 px-3.5 py-2 rounded-2xl shadow-sm text-xs sm:text-sm font-medium max-w-xs sm:max-w-md">
+        <div key={message} className="animate-in fade-in slide-in-from-left-4 relative bg-amber-50/90 border border-amber-200 text-amber-950 px-3.5 py-2 rounded-2xl shadow-sm text-xs sm:text-sm font-medium max-w-xs sm:max-w-md">
           <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-amber-50 border-l border-b border-amber-200 rotate-45"></div>
           {message}
         </div>
