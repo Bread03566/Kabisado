@@ -16,6 +16,7 @@ import SummaryView from '../components/SummaryView';
 import { summarizeDocument, getDocument } from '../services/api';
 
 import StudyPlanModal from '../components/StudyPlanModal';
+import { usePetEmoji } from '../components/pets';
 
 export default function DocumentView({
   documentId,
@@ -26,6 +27,7 @@ export default function DocumentView({
   onStartWeakSpotQuiz,
   showToast
 }) {
+  const petEmoji = usePetEmoji();
   const [doc, setDoc] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'topics' | 'chat'
@@ -434,7 +436,7 @@ export default function DocumentView({
           <Mascot mood="studying" size="lg" />
           <div className="max-w-md mx-auto space-y-1">
             <h3 className="font-extrabold text-slate-900 text-lg">
-              Ask Kabisado (Explainer Chat) 🦉💬
+              Ask Kabisado (Explainer Chat) {petEmoji}💬
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
               Confused by a concept? Ask Kabi! Every answer is grounded in your module and cites the chapter it came from.

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Toast from './components/Toast';
+import Companion from './components/Companion';
 import UploadLibraryView from './views/UploadLibraryView';
 import DocumentView from './views/DocumentView';
 import FlashcardStudyMode from './views/FlashcardStudyMode';
@@ -9,8 +10,20 @@ import ProgressView from './views/ProgressView';
 import ChatView from './views/ChatView';
 import { CloudOff, X } from 'lucide-react';
 import { getDocuments, checkHealth } from './services/api';
+import { usePetEmoji } from './components/pets';
 
 export default function App() {
+  const petEmoji = usePetEmoji();
+
+  // The browser tab icon shows the chosen study buddy
+  useEffect(() => {
+    const icon = document.querySelector('link[rel="icon"]');
+    if (icon) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${petEmoji}</text></svg>`;
+      icon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    }
+  }, [petEmoji]);
+
   const [activeView, setActiveView] = useState('library'); // 'library' | 'dashboard' | 'document' | 'flashcards' | 'quiz' | 'chat'
   const [documents, setDocuments] = useState([]);
   const [currentDoc, setCurrentDoc] = useState(null);
@@ -188,12 +201,15 @@ export default function App() {
       <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span translate="no" className="notranslate font-extrabold text-slate-800">Kabisado 🦉</span>
+            <span translate="no" className="notranslate font-extrabold text-slate-800">Kabisado {petEmoji}</span>
             <span>—</span>
             <span className="italic">Study today, pass tomorrow.</span>
           </div>
         </div>
       </footer>
+
+      {/* Study-buddy pet that watches the cursor */}
+      <Companion />
 
       {/* Toast Notifications */}
       <Toast toast={toast} onClose={() => setToast(null)} />

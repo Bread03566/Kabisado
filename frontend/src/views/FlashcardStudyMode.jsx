@@ -24,6 +24,7 @@ import {
   reviewFlashcard,
   getDueFlashcards
 } from '../services/api';
+import { usePetEmoji } from '../components/pets';
 
 export default function FlashcardStudyMode({ 
   documentId, 
@@ -32,6 +33,7 @@ export default function FlashcardStudyMode({
   onBack, 
   showToast 
 }) {
+  const petEmoji = usePetEmoji();
   const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -310,7 +312,7 @@ export default function FlashcardStudyMode({
           <Mascot mood="happy" size="xl" />
           <div className="space-y-1">
             <h2 className="text-2xl font-black text-slate-900">
-              Nice! You finished the whole deck! 🦉🎉
+              Nice! You finished the whole deck! {petEmoji}🎉
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
               You reviewed all {cards.length} flashcards. Your spaced repetition intervals have been updated for your next review.

@@ -13,6 +13,7 @@ import {
 import Mascot from '../components/Mascot';
 import Markdown from '../components/Markdown';
 import { askDocumentChat } from '../services/api';
+import { usePetEmoji } from '../components/pets';
 
 export default function ChatView({ 
   documentId, 
@@ -20,10 +21,11 @@ export default function ChatView({
   onBack, 
   showToast 
 }) {
+  const petEmoji = usePetEmoji();
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Hi! I'm Kabi 🦉. Ask me anything about **"${documentTitle}"**. ` +
+      content: `Hi! I'm Kabi ${petEmoji}. Ask me anything about **"${documentTitle}"**. ` +
                `I'll explain the confusing parts, grounded in the material and citing the exact section. ` +
                `If the answer isn't in the module, I'll tell you right away so we don't have to guess!`,
       citation: null,

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Mascot from '../components/Mascot';
 import { uploadDocumentFile, createDocumentFromText, deleteDocument } from '../services/api';
+import { usePetEmoji } from '../components/pets';
 
 const SAMPLE_MODULE = {
   title: "Lesson 1: The History of the Propaganda Movement and Jose Rizal",
@@ -35,6 +36,7 @@ export default function UploadLibraryView({
   onRefreshDocs, 
   showToast 
 }) {
+  const petEmoji = usePetEmoji();
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'paste'
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -124,7 +126,7 @@ export default function UploadLibraryView({
         <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="text-center sm:text-left space-y-2 max-w-xl">
             <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md">
-              🦉 Sleepy but Passing
+              {petEmoji} Sleepy but Passing
             </span>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
               Study today, pass tomorrow.
