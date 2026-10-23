@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { BookOpen, Sparkles, Layers, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
+import React from 'react';
+import { BookOpen, Layers, BarChart3 } from 'lucide-react';
 import Mascot from './Mascot';
 
-export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigured, aiModel }) {
-  const [showKeyInfo, setShowKeyInfo] = useState(false);
+export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
@@ -71,84 +70,9 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc, aiConfigure
             </button>
           )}
 
-          {/* AI Status Badge / Modal trigger */}
-          <button
-            onClick={() => setShowKeyInfo(!showKeyInfo)}
-            className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-medium transition flex items-center gap-1.5 ${
-              aiConfigured
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
-                : 'bg-indigo-50 border-indigo-200 text-indigo-800 hover:bg-indigo-100'
-            }`}
-            title="Check AI engine status"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">
-              {aiConfigured ? 'Gemini AI' : 'Offline Mode'}
-            </span>
-            <span className="md:hidden">
-              {aiConfigured ? 'AI' : 'Offline'}
-            </span>
-          </button>
         </nav>
       </div>
 
-      {/* AI Key Info Modal / Dropdown */}
-      {showKeyInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-slate-800 font-bold">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-                <span>Kabisado AI Engine Info</span>
-              </div>
-              <button
-                onClick={() => setShowKeyInfo(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="py-4 space-y-3 text-xs sm:text-sm text-slate-600">
-              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                {aiConfigured ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <p className="font-semibold text-slate-800">
-                    Status: {aiConfigured ? 'Google Gemini connected' : 'Offline engine'}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {aiConfigured
-                      ? `Summaries, flashcards, quizzes, and chat are written by ${aiModel || 'Gemini'}. If Gemini is busy, Kabi switches to a backup model, then to the offline engine.`
-                      : 'Kabi is using the built-in offline engine, which picks key sentences and facts straight from your module. Add a Gemini key for written summaries and smarter questions.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/80 text-amber-900 text-xs">
-                <p className="font-semibold mb-1">How do I add a Gemini API key?</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>Open the file <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">backend/.env</code></li>
-                  <li>Add your key: <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">GEMINI_API_KEY=...</code> (free from Google AI Studio)</li>
-                  <li>Restart the backend server if it's already running.</li>
-                </ol>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setShowKeyInfo(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

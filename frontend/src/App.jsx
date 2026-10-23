@@ -7,6 +7,7 @@ import FlashcardStudyMode from './views/FlashcardStudyMode';
 import QuizMode from './views/QuizMode';
 import ProgressView from './views/ProgressView';
 import ChatView from './views/ChatView';
+import { CloudOff, X } from 'lucide-react';
 import { getDocuments, checkHealth } from './services/api';
 
 export default function App() {
@@ -16,8 +17,8 @@ export default function App() {
   const [activeTopicId, setActiveTopicId] = useState(null);
   const [isDueCardsMode, setIsDueCardsMode] = useState(false);
   const [isWeakSpotQuizMode, setIsWeakSpotQuizMode] = useState(false);
-  const [aiConfigured, setAiConfigured] = useState(false);
-  const [aiModel, setAiModel] = useState(null);
+  const [aiConfigured, setAiConfigured] = useState(null); // null until the health check answers
+  const [offlineNoticeDismissed, setOfflineNoticeDismissed] = useState(false);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -28,9 +29,9 @@ export default function App() {
     try {
       const health = await checkHealth();
       setAiConfigured(Boolean(health.ai_configured));
-      setAiModel(health.ai_model || null);
     } catch {
-      setAiConfigured(false);
+      // Backend unreachable: other errors already say so, so don't also claim the AI is off
+      setAiConfigured(null);
     }
 
     try {
@@ -98,9 +99,25 @@ export default function App() {
           }
         }}
         currentDoc={currentDoc}
-        aiConfigured={aiConfigured}
-        aiModel={aiModel}
       />
+
+      {aiConfigured === false && !offlineNoticeDismissed && (
+        <div className="animate-in fade-in slide-in-from-top-2 border-b border-amber-200 bg-amber-50 text-amber-950">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3 text-xs">
+            <CloudOff className="w-4 h-4 shrink-0 text-amber-700" />
+            <p className="flex-1">
+              AI is offline right now, so summaries, flashcards, and quizzes use simpler versions built straight from your module.
+            </p>
+            <button
+              onClick={() => setOfflineNoticeDismissed(true)}
+              aria-label="Dismiss notice"
+              className="p-1 rounded-md hover:bg-amber-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 pb-16">
