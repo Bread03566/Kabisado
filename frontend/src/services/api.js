@@ -149,16 +149,27 @@ export async function getQuestions(documentId, topicId = null, difficulty = null
   return res.json();
 }
 
-export async function generateQuiz(documentId, count = 5, topicId = null, difficulty = "medium") {
+export async function generateQuiz(documentId, count = 5, topicId = null, difficulty = "medium", questionType = "multiple_choice", style = "mixed") {
   const res = await fetch(`${API_BASE}/api/documents/${documentId}/quiz/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ count, topic_id: topicId, difficulty }),
+    body: JSON.stringify({ count, topic_id: topicId, difficulty, question_type: questionType, style }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Quiz generation failed");
   }
+  return res.json();
+}
+
+// Instant feedback for typed and matching answers, using the same grader as the final score
+export async function checkAnswer(questionId, answer) {
+  const res = await fetch(`${API_BASE}/api/quizzes/check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question_id: questionId, ...answer }),
+  });
+  if (!res.ok) throw new Error("Could not check the answer");
   return res.json();
 }
 

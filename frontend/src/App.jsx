@@ -180,6 +180,7 @@ export default function App() {
             documentId={currentDoc.id}
             initialTopicId={activeTopicId}
             isWeakSpotMode={isWeakSpotQuizMode}
+            aiConfigured={aiConfigured}
             onBack={() => setActiveView('document')}
             onGoToFlashcards={(docId) => handleStartFlashcards(docId, null, false)}
             showToast={showToast}

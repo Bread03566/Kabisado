@@ -100,10 +100,15 @@ class Question(Base):
     topic_id = Column(Integer, ForeignKey("topics.id", ondelete="SET NULL"), nullable=True)
     
     question_text = Column(Text, nullable=False)
-    choices = Column(JSON, nullable=False)  # Array of 4 strings
-    correct_index = Column(Integer, nullable=False)  # 0 to 3
+    choices = Column(JSON, nullable=False)  # Multiple choice: 4 strings; true/false: ["True", "False"]; otherwise []
+    correct_index = Column(Integer, nullable=False)  # Index into choices (0 for types without choices)
     explanation = Column(Text, nullable=False)
     difficulty = Column(String(20), default="medium")  # "easy", "medium", "hard"
+    # "multiple_choice" | "true_false" | "identification" | "matching"
+    question_type = Column(String(20), nullable=False, default="multiple_choice", server_default="multiple_choice")
+    style = Column(String(20), nullable=True)  # "definition" | "situational"
+    # identification: {"answer": str, "accepted_answers": [str]}; matching: {"pairs": [{"term", "definition"}]}
+    answer_data = Column(JSON, nullable=True)
     
     created_at = Column(DateTime, default=utc_now)
 
@@ -137,7 +142,8 @@ class QuestionAttempt(Base):
     attempt_id = Column(Integer, ForeignKey("quiz_attempts.id", ondelete="CASCADE"), nullable=False)
     question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
     
-    selected_index = Column(Integer, nullable=False)
+    selected_index = Column(Integer, nullable=False)  # -1 for types answered without choices
+    response = Column(JSON, nullable=True)  # Typed answer or matching order, for non-choice questions
     is_correct = Column(Boolean, nullable=False)
     answered_at = Column(DateTime, default=utc_now)
 

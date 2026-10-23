@@ -240,3 +240,62 @@ def test_unexpected_errors_do_not_leak_details(monkeypatch):
         res = c.post(f"/api/documents/{doc['id']}/chat", json={"question": "Who led the meetings?"})
     assert res.status_code == 500
     assert "secret" not in res.text
+
+
+def test_mixed_quiz_has_every_question_type_and_grades_each(client):
+    doc = make_doc(client, title="Mixed Types")
+    res = client.post(f"/api/documents/{doc['id']}/quiz/generate", json={"count": 8, "question_type": "mixed", "style": "definition"})
+    assert res.status_code == 200
+    questions = res.json()
+    types = {q["question_type"] for q in questions}
+    assert {"multiple_choice", "identification", "true_false", "matching"} <= types, types
+
+    def correct_answer(q):
+        if q["question_type"] == "identification":
+            return {"text_answer": q["answer_data"]["answer"].upper() + "!"}  # case and punctuation don't matter
+        if q["question_type"] == "matching":
+            return {"matching": list(range(len(q["answer_data"]["pairs"])))}
+        return {"selected_index": q["correct_index"]}
+
+    answers = [{"question_id": q["id"], **correct_answer(q)} for q in questions]
+    report = client.post("/api/quizzes/submit", json={"document_id": doc["id"], "answers": answers}).json()
+    assert report["score"] == len(questions)
+    assert all(r["your_answer"] and r["correct_answer"] for r in report["results"])
+
+
+def test_check_endpoint_forgives_typos_in_typed_answers(client):
+    doc = make_doc(client, title="Identification")
+    q = client.post(f"/api/documents/{doc['id']}/quiz/generate", json={"count": 1, "question_type": "identification"}).json()[0]
+    answer = q["answer_data"]["answer"]
+    typo = answer[:-2] + answer[-1] + answer[-2] if len(answer) >= 6 else answer
+    good = client.post("/api/quizzes/check", json={"question_id": q["id"], "text_answer": typo}).json()
+    assert good["is_correct"] is True
+    bad = client.post("/api/quizzes/check", json={"question_id": q["id"], "text_answer": "definitely wrong"}).json()
+    assert bad["is_correct"] is False
+    assert bad["correct_answer"] == answer
+
+
+def test_existing_databases_get_new_columns(tmp_path):
+    import sqlite3
+    from sqlalchemy import create_engine, inspect
+    from app import database
+
+    path = tmp_path / "old.db"
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE questions (id INTEGER PRIMARY KEY, document_id INTEGER, topic_id INTEGER, question_text TEXT, "
+                "choices JSON, correct_index INTEGER, explanation TEXT, difficulty VARCHAR(20), created_at DATETIME)")
+    con.execute("INSERT INTO questions (document_id, question_text, choices, correct_index, explanation) VALUES (1, 'Old?', '[]', 0, 'x')")
+    con.commit()
+    con.close()
+
+    old_engine = database.engine
+    database.engine = create_engine(f"sqlite:///{path.as_posix()}")
+    try:
+        database.add_missing_columns()
+        columns = {c["name"] for c in inspect(database.engine).get_columns("questions")}
+        with database.engine.connect() as conn:
+            existing_type = conn.exec_driver_sql("SELECT question_type FROM questions").scalar()
+    finally:
+        database.engine = old_engine
+    assert {"question_type", "style", "answer_data"} <= columns
+    assert existing_type == "multiple_choice"

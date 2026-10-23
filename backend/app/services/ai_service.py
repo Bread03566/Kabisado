@@ -345,6 +345,38 @@ class AIService:
             return self._fallback_flashcards(topic_title, topic_content, topic_id, count, card_type)
 
     # ==================== QUIZ GENERATOR ====================
+    TYPE_SCHEMAS = {
+        "multiple_choice": (
+            '{"type": "multiple_choice", "style": "definition|situational", "question": "...?", '
+            '"choices": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "..."}  '
+            "(exactly 4 choices, one unambiguously correct, 3 plausible distractors from the same text)"
+        ),
+        "true_false": (
+            '{"type": "true_false", "style": "definition|situational", "question": "A statement to judge.", '
+            '"answer": true, "explanation": "..."}  '
+            "(a single clear statement, not a question; false statements change one key fact from the text)"
+        ),
+        "identification": (
+            '{"type": "identification", "style": "definition|situational", "question": "...?", '
+            '"answer": "short answer", "accepted_answers": ["other acceptable spellings"], "explanation": "..."}  '
+            "(the answer is a term, name, number, or date of 1 to 5 words that the student types)"
+        ),
+        "matching": (
+            '{"type": "matching", "style": "definition|situational", "question": "Match each term to its description.", '
+            '"pairs": [{"term": "...", "definition": "..."}], "explanation": "..."}  '
+            "(4 pairs with distinct terms; definitions short enough to read at a glance)"
+        ),
+    }
+    STYLE_RULES = {
+        "definition": "Every question is DEFINITION style: it checks recall of a term, fact, or definition straight from the text.",
+        "situational": (
+            "Every question is SITUATIONAL style: it opens with a short realistic scenario (1 to 3 sentences, everyday "
+            "or workplace) and asks the student to apply a concept from the text. For matching, pair short scenarios "
+            "with the concept each one illustrates."
+        ),
+        "mixed": "Mix DEFINITION questions (recall) and SITUATIONAL questions (a short scenario that applies a concept), about half each.",
+    }
+
     async def generate_quiz_questions(
         self,
         document_title: str,
@@ -352,85 +384,128 @@ class AIService:
         topic_content: str,
         topic_id: Optional[int] = None,
         count: int = 5,
-        difficulty: str = "medium"  # "easy", "medium", "hard", "mixed"
+        difficulty: str = "medium",  # "easy", "medium", "hard", "mixed"
+        question_types: Optional[List[str]] = None,  # one entry per question, e.g. ["identification", "matching"]
+        style: str = "mixed",  # "definition", "situational", "mixed"
+        question_styles: Optional[List[str]] = None  # one entry per question; overrides `style` when given
     ) -> List[Dict[str, Any]]:
         """
-        Generates multiple-choice quiz questions.
-        Question JSON:
-        [
-          {
-            "question": "",
-            "choices": ["A", "B", "C", "D"],
-            "correct_index": 0,
-            "explanation": "",
-            "difficulty": "medium",
-            "topic_id": ""
-          }
-        ]
+        Generates quiz questions of the requested types and style. Every returned dict has:
+        question, choices, correct_index, explanation, difficulty, topic_id, question_type, style, answer_data.
         """
+        question_types = question_types or ["multiple_choice"] * count
+        if not question_styles:
+            # "mixed" alternates, so a short quiz still gets both kinds
+            question_styles = [
+                ("situational" if i % 2 == 0 else "definition") if style == "mixed" else style
+                for i in range(len(question_types))
+            ]
         if not self.is_api_configured():
-            return self._fallback_quiz(topic_title, topic_content, topic_id, count, difficulty)
+            return self._fallback_quiz(topic_title, topic_content, topic_id, count, difficulty, question_types)
 
+        # Small models drift toward recall questions when asked for "a mix", so each slot names its style
+        wanted = "\n".join(f"{i + 1}. {t}, {s}" for i, (t, s) in enumerate(zip(question_types, question_styles)))
+        styles_used = set(question_styles)
+        style_rule = self.STYLE_RULES["mixed"] if len(styles_used) > 1 else self.STYLE_RULES[next(iter(styles_used))]
+        schemas = "\n".join(f"- {self.TYPE_SCHEMAS[t]}" for t in dict.fromkeys(question_types))
         system_prompt = (
             "You are Kabisado, an expert exam maker for college and high school students. "
-            "Generate rigorous multiple-choice questions grounded STRICTLY in the provided text.\n"
+            "Write quiz questions grounded STRICTLY in the provided text: never test facts the text does not state.\n"
             "Rules:\n"
-            "1. Exactly 4 choices per question.\n"
-            "2. One unequivocally correct answer; 3 plausible distractors (misconceptions or related terms from the text).\n"
-            "3. Grounded explanation that explains why the correct answer is right and why distractors are wrong.\n"
-            "4. Write every question, choice, and explanation in English, even if the source text is in another language.\n"
-            "5. Return strict JSON array matching this schema:\n"
-            "[\n"
-            '  {\n'
-            '    "question": "Clear question text?",\n'
-            '    "choices": ["Option 1", "Option 2", "Option 3", "Option 4"],\n'
-            '    "correct_index": 0,\n'
-            '    "explanation": "Clear explanation referencing the text...",\n'
-            f'    "difficulty": "{difficulty if difficulty != "mixed" else "medium"}",\n'
-            f'    "topic_id": {json.dumps(topic_id)}\n'
-            '  }\n'
-            "]"
+            f"1. {style_rule} DEFINITION style checks recall of a term or fact. SITUATIONAL style must open with a short realistic scenario (1 to 3 sentences) and ask the student to apply a concept; set \"style\" on every item.\n"
+            "2. Each explanation says why the answer is right, citing the text, and for multiple choice why the others are wrong.\n"
+            "3. Write everything in English, even if the source text is in another language.\n"
+            f"4. Difficulty: {difficulty if difficulty != 'mixed' else 'a mix of easy, medium, and hard'}.\n"
+            "5. Return a strict JSON array. Each item uses the shape for its type:\n"
+            f"{schemas}"
         )
-
         user_prompt = (
             f"Topic: {topic_title}\n"
-            f"Number of Questions: {count}\n"
-            f"Difficulty Level: {difficulty}\n\n"
+            f"Write exactly these questions, in this order (type, style):\n{wanted}\n\n"
             f"--- TEXT CONTENT ---\n{topic_content[:15000]}"
         )
 
         try:
-            questions = await self._call_gemini_json(system_prompt, user_prompt)
-            if not isinstance(questions, list):
-                if isinstance(questions, dict) and "questions" in questions:
-                    questions = questions["questions"]
-                else:
-                    raise ValueError("Questions response is not a list")
+            raw = await self._call_gemini_json(system_prompt, user_prompt)
+            if isinstance(raw, dict):
+                raw = raw.get("questions", [])
+            if not isinstance(raw, list):
+                raise ValueError("Questions response is not a list")
 
-            cleaned_questions = []
-            for q in questions:
-                if isinstance(q, dict) and "question" in q and isinstance(q.get("choices"), list) and len(q["choices"]) == 4:
-                    try:
-                        c_idx = int(q.get("correct_index", 0))
-                    except (TypeError, ValueError):
-                        continue
-                    if c_idx < 0 or c_idx > 3:
-                        continue
-                    diff = q.get("difficulty", difficulty)
-                    if diff not in ["easy", "medium", "hard"]:
-                        diff = "medium"
-                    cleaned_questions.append({
-                        "question": str(q["question"]).strip(),
-                        "choices": [str(c).strip() for c in q["choices"]],
-                        "correct_index": c_idx,
-                        "explanation": str(q.get("explanation", "Based on the module content.")).strip(),
-                        "difficulty": diff,
-                        "topic_id": topic_id
-                    })
-            return cleaned_questions[:count] if cleaned_questions else self._fallback_quiz(topic_title, topic_content, topic_id, count, difficulty)
+            cleaned = [
+                q for q in (self._clean_ai_question(item, difficulty, style, topic_id) for item in raw)
+                if q and q["question_type"] in question_types
+            ]
+            # Keep the requested mix: fill each slot with a question of that type, preferring the asked-for style
+            picked: List[Dict[str, Any]] = []
+            for wanted_type, wanted_style in zip(question_types, question_styles):
+                same_type = [q for q in cleaned if q["question_type"] == wanted_type]
+                match = next((q for q in same_type if q["style"] == wanted_style), same_type[0] if same_type else None)
+                if match:
+                    cleaned.remove(match)
+                    picked.append(match)
+            return picked or self._fallback_quiz(topic_title, topic_content, topic_id, count, difficulty, question_types)
         except Exception as e:
             logger.warning(f"Gemini quiz generation error ({e}), using grounded fallback.")
-            return self._fallback_quiz(topic_title, topic_content, topic_id, count, difficulty)
+            return self._fallback_quiz(topic_title, topic_content, topic_id, count, difficulty, question_types)
+
+    @staticmethod
+    def _clean_ai_question(q: Any, difficulty: str, style: str, topic_id: Optional[int]) -> Optional[Dict[str, Any]]:
+        """Validates one AI-written question against its type; returns None if it is unusable."""
+        if not isinstance(q, dict) or not str(q.get("question", "")).strip():
+            return None
+        qtype = q.get("type", "multiple_choice")
+        diff = q.get("difficulty") if q.get("difficulty") in ("easy", "medium", "hard") else (difficulty if difficulty != "mixed" else "medium")
+        q_style = q.get("style") if q.get("style") in ("definition", "situational") else (style if style != "mixed" else "definition")
+        result = {
+            "question": str(q["question"]).strip(),
+            "explanation": str(q.get("explanation") or "Based on the module content.").strip(),
+            "difficulty": diff,
+            "topic_id": topic_id,
+            "question_type": qtype,
+            "style": q_style,
+            "choices": [],
+            "correct_index": 0,
+            "answer_data": None,
+        }
+
+        if qtype == "multiple_choice":
+            choices = q.get("choices")
+            if not isinstance(choices, list) or len(choices) != 4:
+                return None
+            try:
+                idx = int(q.get("correct_index", 0))
+            except (TypeError, ValueError):
+                return None
+            if not 0 <= idx <= 3:
+                return None
+            result.update(choices=[str(c).strip() for c in choices], correct_index=idx)
+        elif qtype == "true_false":
+            answer = q.get("answer")
+            if isinstance(answer, str):
+                answer = {"true": True, "false": False}.get(answer.strip().lower())
+            if not isinstance(answer, bool):
+                return None
+            result.update(choices=["True", "False"], correct_index=0 if answer else 1)
+        elif qtype == "identification":
+            answer = str(q.get("answer") or "").strip()
+            if not answer or len(answer) > 80:
+                return None
+            alternates = [str(a).strip() for a in (q.get("accepted_answers") or []) if str(a).strip()][:5]
+            result["answer_data"] = {"answer": answer, "accepted_answers": alternates}
+        elif qtype == "matching":
+            pairs = []
+            seen = set()
+            for p in q.get("pairs") or []:
+                if isinstance(p, dict) and p.get("term") and p.get("definition") and str(p["term"]).lower() not in seen:
+                    seen.add(str(p["term"]).lower())
+                    pairs.append({"term": str(p["term"]).strip(), "definition": str(p["definition"]).strip()})
+            if not 3 <= len(pairs) <= 6:
+                return None
+            result["answer_data"] = {"pairs": pairs}
+        else:
+            return None
+        return result
 
     # ==================== DETERMINISTIC GROUNDED FALLBACKS ====================
     # These keep the app useful offline or before the student sets GEMINI_API_KEY.
@@ -482,55 +557,113 @@ class AIService:
                 })
         return cards[:count]
 
-    def _fallback_quiz(self, topic_title: str, text: str, topic_id: Optional[int], count: int, difficulty: str) -> List[Dict[str, Any]]:
+    def _fallback_quiz(
+        self,
+        topic_title: str,
+        text: str,
+        topic_id: Optional[int],
+        count: int,
+        difficulty: str,
+        question_types: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Offline questions of each type, built from the text's own definitions and from
+        fill-in-the-blank sentences (years and names). Situational questions need the AI to
+        write scenarios, so offline questions are always definition style.
+        """
+        types = question_types or ["multiple_choice"] * count
+        definitions = list(_extract_definitions(text))
+        terms = [t for t, _ in definitions]
+        candidates = _answer_candidates(text)
+        clozes = []
+        for sentence in _key_sentences(text, max(12, count * 4)):
+            cloze = _make_cloze(sentence, candidates)
+            if cloze:
+                clozes.append((sentence, cloze))
+
         questions: List[Dict[str, Any]] = []
 
-        def level(i: int) -> str:
-            return difficulty if difficulty != "mixed" else ("easy" if i % 2 == 0 else "medium")
-
-        def add(question: str, answer: str, distractors: List[str], explanation: str) -> None:
-            if len(distractors) < 3:
-                return
-            correct_idx = len(questions) % 4
-            choices = distractors[:3]
-            choices.insert(correct_idx, answer)
-            questions.append({
+        def make(qtype: str, question: str, explanation: str, **fields) -> Dict[str, Any]:
+            n = len(questions)
+            return {
                 "question": question,
-                "choices": choices,
-                "correct_index": correct_idx,
                 "explanation": explanation,
-                "difficulty": level(len(questions)),
-                "topic_id": topic_id
-            })
+                "difficulty": difficulty if difficulty != "mixed" else ("easy" if n % 2 == 0 else "medium"),
+                "topic_id": topic_id,
+                "question_type": qtype,
+                "style": "definition",
+                "choices": fields.get("choices", []),
+                "correct_index": fields.get("correct_index", 0),
+                "answer_data": fields.get("answer_data"),
+            }
 
-        definitions = _extract_definitions(text)
-        terms = [t for t, _ in definitions]
-        for term, definition in definitions:
-            if len(questions) >= count:
-                return questions
-            others = [t for t in terms if t != term]
-            add(
-                f"Which term matches this description: \"{definition}\"",
-                term,
-                others,
-                f"According to the module, {term}: {definition}"
-            )
+        def distractors_for(cloze: Dict[str, Any], sentence: str) -> List[str]:
+            return [c for c in candidates[cloze["kind"]] if c != cloze["answer"] and c not in sentence]
 
-        candidates = _answer_candidates(text)
-        for sentence in _key_sentences(text, count * 4):
-            if len(questions) >= count:
-                break
-            cloze = _make_cloze(sentence, candidates)
-            if not cloze:
-                continue
-            pool = [c for c in candidates[cloze["kind"]] if c != cloze["answer"] and c not in sentence]
-            add(
-                f"Fill in the blank: {cloze['prompt']}",
-                cloze["answer"],
-                pool,
-                f"The module states: \"{sentence}\""
-            )
-        return questions[:count]
+        def multiple_choice() -> Optional[Dict[str, Any]]:
+            correct_idx = len(questions) % 4
+            if definitions and len(terms) >= 4:
+                term, definition = definitions.pop(0)
+                choices = [t for t in terms if t != term][:3]
+                choices.insert(correct_idx, term)
+                return make("multiple_choice", f"Which term matches this description: \"{definition}\"",
+                            f"According to the module, {term}: {definition}", choices=choices, correct_index=correct_idx)
+            while clozes:
+                sentence, cloze = clozes.pop(0)
+                pool = distractors_for(cloze, sentence)
+                if len(pool) >= 3:
+                    choices = pool[:3]
+                    choices.insert(correct_idx, cloze["answer"])
+                    return make("multiple_choice", f"Fill in the blank: {cloze['prompt']}",
+                                f"The module states: \"{sentence}\"", choices=choices, correct_index=correct_idx)
+            return None
+
+        def true_false() -> Optional[Dict[str, Any]]:
+            while clozes:
+                sentence, cloze = clozes.pop(0)
+                pool = distractors_for(cloze, sentence)
+                make_false = len(questions) % 2 == 1 and pool
+                statement = cloze["prompt"].replace("_____", pool[0] if make_false else cloze["answer"], 1)
+                return make("true_false", statement, f"The module states: \"{sentence}\"",
+                            choices=["True", "False"], correct_index=1 if make_false else 0)
+            return None
+
+        def identification() -> Optional[Dict[str, Any]]:
+            if definitions:
+                term, definition = definitions.pop(0)
+                return make("identification", f"What term is described here? \"{definition}\"",
+                            f"According to the module, {term}: {definition}", answer_data={"answer": term, "accepted_answers": []})
+            if clozes:
+                sentence, cloze = clozes.pop(0)
+                return make("identification", f"Fill in the blank: {cloze['prompt']}", f"The module states: \"{sentence}\"",
+                            answer_data={"answer": cloze["answer"], "accepted_answers": []})
+            return None
+
+        def matching() -> Optional[Dict[str, Any]]:
+            if len(definitions) >= 3:
+                pairs = [{"term": t, "definition": d} for t, d in definitions[:4]]
+                del definitions[:4]
+                return make("matching", "Match each term to its description.",
+                            "Each description is taken from the module's own definitions.", answer_data={"pairs": pairs})
+            pairs, used = [], set()
+            for sentence, cloze in list(clozes):
+                if cloze["answer"] not in used:
+                    used.add(cloze["answer"])
+                    pairs.append({"term": cloze["answer"], "definition": cloze["prompt"]})
+                    clozes.remove((sentence, cloze))
+                if len(pairs) == 4:
+                    break
+            if len(pairs) >= 3:
+                return make("matching", "Match each answer to the sentence it completes.",
+                            "Each sentence comes straight from the module.", answer_data={"pairs": pairs})
+            return None
+
+        makers = {"multiple_choice": multiple_choice, "true_false": true_false, "identification": identification, "matching": matching}
+        for qtype in types:
+            question = makers.get(qtype, multiple_choice)() or (multiple_choice() if qtype != "multiple_choice" else None)
+            if question:
+                questions.append(question)
+        return questions
 
     # ==================== EXPLAINER CHAT (ASK KABISADO) ====================
     async def answer_document_question(

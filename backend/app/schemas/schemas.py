@@ -124,6 +124,9 @@ class QuestionResponse(BaseModel):
     correct_index: int
     explanation: str
     difficulty: str
+    question_type: str = "multiple_choice"
+    style: Optional[str] = None
+    answer_data: Optional[Dict[str, Any]] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -132,10 +135,20 @@ class QuizGenerateRequest(BaseModel):
     topic_id: Optional[int] = None
     count: int = Field(default=5, ge=1, le=25)
     difficulty: Optional[str] = Field(default="mixed", pattern="^(easy|medium|hard|mixed)$")
+    question_type: str = Field(default="multiple_choice", pattern="^(multiple_choice|true_false|identification|matching|mixed)$")
+    style: str = Field(default="mixed", pattern="^(definition|situational|mixed)$")
 
 class QuestionAttemptInput(BaseModel):
+    """One answer. Which field is used depends on the question type."""
     question_id: int
-    selected_index: int
+    selected_index: Optional[int] = None  # multiple choice, true/false
+    text_answer: Optional[str] = Field(default=None, max_length=300)  # identification
+    matching: Optional[List[int]] = None  # matching: matching[i] = index of the term placed on definition i
+
+class AnswerCheckResponse(BaseModel):
+    is_correct: bool
+    correct_answer: str
+    explanation: str
 
 class QuizSubmitRequest(BaseModel):
     document_id: int
@@ -152,6 +165,10 @@ class QuestionResultDetail(BaseModel):
     is_correct: bool
     explanation: str
     topic_title: Optional[str] = None
+    question_type: str = "multiple_choice"
+    answer_data: Optional[Dict[str, Any]] = None
+    your_answer: str = ""  # human-readable, for the review list
+    correct_answer: str = ""
 
 class QuizResultResponse(BaseModel):
     attempt_id: int

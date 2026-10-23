@@ -18,12 +18,35 @@ import {
 import confetti from 'canvas-confetti';
 import Mascot from '../components/Mascot';
 import FlagModal from '../components/FlagModal';
-import { getQuestions, generateQuiz, submitQuizAttempt, generateWeakSpotQuiz } from '../services/api';
+import QuestionBody, { QUESTION_TYPE_LABELS } from '../components/QuestionBody';
+import { getQuestions, generateQuiz, submitQuizAttempt, generateWeakSpotQuiz, checkAnswer } from '../services/api';
+
+const QUESTION_TYPES = [
+  { id: 'mixed', label: 'Mixed', hint: 'A bit of everything' },
+  { id: 'multiple_choice', label: 'Multiple choice', hint: 'Pick from 4 options' },
+  { id: 'true_false', label: 'True or false', hint: 'Judge a statement' },
+  { id: 'identification', label: 'Identification', hint: 'Type the answer' },
+  { id: 'matching', label: 'Matching', hint: 'Drag terms to their match' },
+];
+
+const QUESTION_STYLES = [
+  { id: 'definition', label: 'Definitions', hint: 'Recall terms and facts' },
+  { id: 'situational', label: 'Situational', hint: 'Apply ideas to a scenario' },
+  { id: 'mixed', label: 'Both', hint: 'Half and half' },
+];
+
+// The parts of a stored answer that the server grades
+const toPayload = (questionId, answer) => {
+  if (!answer) return { question_id: questionId };
+  const { selected_index, text_answer, matching } = answer;
+  return { question_id: questionId, selected_index, text_answer, matching };
+};
 
 export default function QuizMode({ 
   documentId, 
   initialTopicId = null, 
   isWeakSpotMode = false,
+  aiConfigured = null,
   onBack, 
   onGoToFlashcards,
   showToast 
@@ -31,8 +54,8 @@ export default function QuizMode({
   const [questions, setQuestions] = useState([]); // the quiz being taken right now
   const [savedQuestions, setSavedQuestions] = useState([]); // every question made for this module
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState({});
-  const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
+  const [answers, setAnswers] = useState({}); // question id -> response + is_correct
+  const [checking, setChecking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +64,8 @@ export default function QuizMode({
   // Setup options
   const [targetCount, setTargetCount] = useState(5);
   const [selectedDifficulty, setSelectedDifficulty] = useState('medium');
+  const [questionType, setQuestionType] = useState('mixed');
+  const [quizStyle, setQuizStyle] = useState('mixed');
   const [showFlagModal, setShowFlagModal] = useState(false);
 
   // Phase 4: Exam Mode with Timer
@@ -84,8 +109,7 @@ export default function QuizMode({
 
   const resetQuizState = () => {
     setCurrentIndex(0);
-    setSelectedAnswers({});
-    setHasAnsweredCurrent(false);
+    setAnswers({});
     setQuizResult(null);
     setSecondsRemaining(null);
   };
@@ -111,7 +135,9 @@ export default function QuizMode({
         documentId, 
         targetCount, 
         initialTopicId, 
-        selectedDifficulty
+        selectedDifficulty,
+        questionType,
+        quizStyle
       );
       setSavedQuestions((prev) => [...newQuestions, ...prev]);
       startQuiz(newQuestions);
@@ -139,22 +165,32 @@ export default function QuizMode({
     }
   };
 
-  const handleSelectChoice = (choiceIndex) => {
-    if (hasAnsweredCurrent) return;
-
-    const currentQ = questions[currentIndex];
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [currentQ.id]: choiceIndex
-    }));
-    setHasAnsweredCurrent(true);
+  // Choice and matching answers are exact, so they're checked right here; typed answers ask the
+  // server, which forgives small typos the same way the final score does.
+  const handleAnswer = async (question, response) => {
+    if (answers[question.id] || checking) return;
+    if (question.question_type === 'identification') {
+      setChecking(true);
+      try {
+        const res = await checkAnswer(question.id, response);
+        setAnswers((prev) => ({ ...prev, [question.id]: { ...response, is_correct: res.is_correct, correct_answer: res.correct_answer } }));
+      } catch {
+        showToast('error', 'Could not check that answer. Try again.');
+      } finally {
+        setChecking(false);
+      }
+      return;
+    }
+    const isCorrect =
+      question.question_type === 'matching'
+        ? response.matching.every((termIdx, slot) => termIdx === slot)
+        : response.selected_index === question.correct_index;
+    setAnswers((prev) => ({ ...prev, [question.id]: { ...response, is_correct: isCorrect } }));
   };
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
-      const nextQ = questions[currentIndex + 1];
-      setHasAnsweredCurrent(selectedAnswers[nextQ?.id] !== undefined);
     } else {
       handleFinishQuiz();
     }
@@ -166,10 +202,7 @@ export default function QuizMode({
     setSecondsRemaining(null);
     setIsSubmitting(true);
     try {
-      const answersPayload = questions.map((q) => ({
-        question_id: q.id,
-        selected_index: selectedAnswers[q.id] !== undefined ? selectedAnswers[q.id] : -1
-      }));
+      const answersPayload = questions.map((q) => toPayload(q.id, answers[q.id]));
 
       const result = await submitQuizAttempt(
         documentId, 
@@ -204,7 +237,7 @@ export default function QuizMode({
   };
 
   const currentQ = questions[currentIndex];
-  const userChoice = currentQ ? selectedAnswers[currentQ.id] : undefined;
+  const hasAnsweredCurrent = currentQ ? answers[currentQ.id] !== undefined : false;
 
   const formatTimer = (seconds) => {
     if (seconds === null) return null;
@@ -278,7 +311,7 @@ export default function QuizMode({
             </p>
           </div>
 
-          <div className="w-full max-w-sm space-y-4 text-left">
+          <div className="w-full max-w-md space-y-4 text-left">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Number of Questions:
@@ -300,6 +333,55 @@ export default function QuizMode({
                 ))}
               </div>
             </div>
+
+            <fieldset>
+              <legend className="block text-xs font-bold text-slate-700 mb-1.5">Question type:</legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {QUESTION_TYPES.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setQuestionType(t.id)}
+                    aria-pressed={questionType === t.id}
+                    className={`rounded-xl border px-2.5 py-2 text-left transition ${
+                      questionType === t.id
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-900 shadow-xs'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">{t.label}</span>
+                    <span className="block text-[10px] text-slate-500">{t.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend className="block text-xs font-bold text-slate-700 mb-1.5">Question style:</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {QUESTION_STYLES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setQuizStyle(s.id)}
+                    aria-pressed={quizStyle === s.id}
+                    className={`rounded-xl border px-2.5 py-2 text-left transition ${
+                      quizStyle === s.id
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-900 shadow-xs'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">{s.label}</span>
+                    <span className="block text-[10px] text-slate-500">{s.hint}</span>
+                  </button>
+                ))}
+              </div>
+              {quizStyle !== 'definition' && aiConfigured === false && (
+                <p className="mt-1.5 text-[11px] text-amber-800">
+                  Situational questions are written by the AI, which is offline right now, so you'll get definition questions instead.
+                </p>
+              )}
+            </fieldset>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -370,7 +452,7 @@ export default function QuizMode({
             </div>
           </div>
 
-          <div className="w-full max-w-sm space-y-2">
+          <div className="w-full max-w-md space-y-2">
             <button
               onClick={handleGenerateQuestions}
               disabled={isGenerating}
@@ -503,16 +585,22 @@ export default function QuizMode({
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200">
                       <span className="text-[11px] font-bold text-slate-400 block mb-0.5">Your answer:</span>
                       <span className={item.is_correct ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold'}>
-                        {item.selected_index >= 0 ? item.choices[item.selected_index] : 'No answer (Timeout)'}
+                        {item.your_answer}
                       </span>
                     </div>
 
                     {!item.is_correct && (
                       <div className="p-2.5 rounded-xl bg-white border border-emerald-300">
                         <span className="text-[11px] font-bold text-emerald-600 block mb-0.5">Correct answer:</span>
-                        <span className="text-emerald-800 font-bold">
-                          {item.choices[item.correct_index]}
-                        </span>
+                        {item.question_type === 'matching' ? (
+                          <ul className="space-y-0.5 text-emerald-800">
+                            {(item.answer_data?.pairs || []).map((p) => (
+                              <li key={p.term}><span className="font-bold">{p.term}</span>: {p.definition}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-emerald-800 font-bold">{item.correct_answer}</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -561,9 +649,14 @@ export default function QuizMode({
           {/* Question Card */}
           <div key={currentQ?.id} className="animate-in fade-in slide-in-from-right-4 bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md space-y-6">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Choose one correct answer
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  {QUESTION_TYPE_LABELS[currentQ?.question_type] || QUESTION_TYPE_LABELS.multiple_choice}
+                </span>
+                {currentQ?.style === 'situational' && (
+                  <span className="font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">Situational</span>
+                )}
+              </div>
               {currentQ?.topic_title && (
                 <span className="truncate max-w-[200px]">
                   Topic: {currentQ.topic_title}
@@ -575,61 +668,14 @@ export default function QuizMode({
               {currentQ?.question_text}
             </h2>
 
-            {/* 4 Multiple Choice Options */}
-            <div className="space-y-3">
-              {currentQ?.choices.map((choiceText, cIdx) => {
-                const isSelected = userChoice === cIdx;
-                const isCorrect = cIdx === currentQ.correct_index;
-
-                let btnStyle = 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 text-slate-800';
-                let letterStyle = 'bg-slate-100 text-slate-700';
-
-                if (hasAnsweredCurrent) {
-                  if (isCorrect) {
-                    btnStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold ring-2 ring-emerald-500/30';
-                    letterStyle = 'bg-emerald-600 text-white';
-                  } else if (isSelected) {
-                    btnStyle = 'border-rose-400 bg-rose-50 text-rose-950 font-bold';
-                    letterStyle = 'bg-rose-600 text-white';
-                  } else {
-                    btnStyle = 'border-slate-100 text-slate-400 opacity-60';
-                  }
-                } else if (isSelected) {
-                  btnStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold';
-                  letterStyle = 'bg-emerald-600 text-white';
-                }
-
-                // Right answer pulses, a wrong pick shakes
-                const feedbackAnim = hasAnsweredCurrent ? (isCorrect ? 'answer-correct' : isSelected ? 'answer-wrong' : '') : '';
-                const letters = ['A', 'B', 'C', 'D'];
-
-                return (
-                  <button
-                    key={cIdx}
-                    onClick={() => handleSelectChoice(cIdx)}
-                    disabled={hasAnsweredCurrent}
-                    className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between gap-3 text-xs sm:text-sm select-none ${btnStyle} ${feedbackAnim}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition ${letterStyle}`}>
-                        {letters[cIdx]}
-                      </span>
-                      <span className="leading-relaxed">{choiceText}</span>
-                    </div>
-
-                    {hasAnsweredCurrent && (
-                      <div className="shrink-0">
-                        {isCorrect ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        ) : isSelected ? (
-                          <XCircle className="w-5 h-5 text-rose-600" />
-                        ) : null}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {currentQ && (
+              <QuestionBody
+                question={currentQ}
+                answer={answers[currentQ.id]}
+                checking={checking}
+                onAnswer={(response) => handleAnswer(currentQ, response)}
+              />
+            )}
 
             {/* Instant Grounded Explanation Card */}
             {hasAnsweredCurrent && (
