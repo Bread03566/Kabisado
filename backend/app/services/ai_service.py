@@ -9,7 +9,7 @@ from google import genai
 from google.genai import types
 from google.genai import errors as genai_errors
 from app.config import settings
-from app.services import consent
+from app.services import consent, retrieval
 from app.services.segmenter_service import segmenter_service
 
 logger = logging.getLogger(__name__)
@@ -705,7 +705,7 @@ class AIService:
         }
         """
         if not self.may_use_gemini(user_id):
-            return self._fallback_chat(document_title, topics, question, explain_like_new)
+            return self._fallback_chat(document_title, topics, question, explain_like_new, conversation_history)
 
         context_blocks = []
         for t in topics:
@@ -760,34 +760,22 @@ class AIService:
         document_title: str,
         topics: List[Dict[str, Any]],
         question: str,
-        explain_like_new: bool
+        explain_like_new: bool,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
-        """Grounded keyword search across document topics when offline."""
-        keywords = [w for w in re.findall(r"\b\w{3,}\b", question.lower()) if w not in STOPWORDS]
-
-        matched_sentences = []
-        for t in topics:
-            for s in _sentences(t.get("content", "")):
-                s_lower = s.lower()
-                matches = sum(1 for kw in keywords if kw in s_lower)
-                if matches > 0:
-                    matched_sentences.append((matches, s, t.get("title", "Lesson")))
-
-        if matched_sentences:
-            matched_sentences.sort(key=lambda x: x[0], reverse=True)
-            best_topic = matched_sentences[0][2]
-            best_snippet = " ".join(m[1] for m in matched_sentences[:2])
-
+        """Grounded answer from the student's own material when Gemini is not used: ranked passages, or an honest 'not found'."""
+        ranked = retrieval.rank(retrieval.build_chunks(topics), question, history=conversation_history)
+        if ranked:
+            best_score, best = ranked[0]
+            passages = [best.text]
+            if len(ranked) > 1 and ranked[1][0] >= 0.75 * best_score and ranked[1][1].text != best.text:
+                passages.append(ranked[1][1].text)  # a second passage only when it is nearly as relevant
             prefix = "Here's a simple explanation to make it easier to understand:\n\n" if explain_like_new else ""
-            ans_text = (
-                f"{prefix}According to your module:\n\n"
-                f"> {best_snippet}\n\n"
-                f"*Source: {best_topic}*"
-            )
+            quoted = "\n\n".join(f"> {p}" for p in passages)
             return {
-                "answer": ans_text,
-                "citation": best_topic,
-                "found_in_document": True
+                "answer": f"{prefix}According to your module:\n\n{quoted}\n\n*Source: {best.citation}*",
+                "citation": best.citation,
+                "found_in_document": True,
             }
         return {
             "answer": (
@@ -797,7 +785,7 @@ class AIService:
                 f"Try asking about the topics covered in the module."
             ),
             "citation": None,
-            "found_in_document": False
+            "found_in_document": False,
         }
 
 ai_service = AIService()
