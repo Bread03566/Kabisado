@@ -19,13 +19,13 @@ export default function AccountModal({ user, onClose }) {
     if (busy) return;
     setError('');
     setDone('');
-    if (action === 'password' && next !== confirm) return setError('Hindi magkapareho ang dalawang bagong password.');
+    if (action === 'password' && next !== confirm) return setError('The two new passwords do not match.');
     setBusy(true);
     try {
       if (action === 'password') {
         await changePassword(current, next, confirm);
         setCurrent(''); setNext(''); setConfirm('');
-        setDone('Napalitan na ang password. Na-log out ang ibang device.');
+        setDone('Password changed. Your other devices have been signed out.');
       } else if (action === 'deactivate') {
         await deactivateAccount(current);
         await authClient.logout();
@@ -40,7 +40,7 @@ export default function AccountModal({ user, onClose }) {
     }
   };
 
-  const tabs = [['password', 'Palitan ang password'], ['deactivate', 'I-deactivate'], ['delete', 'Burahin ang account']];
+  const tabs = [['password', 'Change password'], ['deactivate', 'Deactivate'], ['delete', 'Delete account']];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-label="Account">
@@ -50,7 +50,7 @@ export default function AccountModal({ user, onClose }) {
             <h2 className="text-lg font-extrabold text-slate-900">{user.display_name}</h2>
             <p className="text-xs text-slate-500">@{user.username}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Isara" className="rounded-lg p-1.5 hover:bg-slate-100"><X className="w-5 h-5" /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 hover:bg-slate-100"><X className="w-5 h-5" /></button>
         </div>
 
         <div role="tablist" className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
@@ -64,13 +64,13 @@ export default function AccountModal({ user, onClose }) {
         </div>
 
         <form onSubmit={run} className="mt-4 space-y-3" noValidate>
-          {action === 'deactivate' && <p className="text-xs text-slate-600">Hindi ka na makakapag-login hanggang hindi na-re-activate ng admin. Hindi nabubura ang data mo.</p>}
-          {action === 'delete' && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">Mabubura ang account mo at <strong>lahat ng module, flashcards, quizzes at progress</strong>. Hindi ito mababawi.</p>}
-          <PasswordField label={action === 'password' ? 'Kasalukuyang password' : 'Password mo'} value={current} onChange={setCurrent} autoComplete="current-password" />
+          {action === 'deactivate' && <p className="text-xs text-slate-600">You will not be able to log in until an admin reactivates your account. Your data is not deleted.</p>}
+          {action === 'delete' && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">This deletes your account and <strong>all your modules, flashcards, quizzes and progress</strong>. It cannot be undone.</p>}
+          <PasswordField label={action === 'password' ? 'Current password' : 'Your password'} value={current} onChange={setCurrent} autoComplete="current-password" />
           {action === 'password' && (
             <>
-              <PasswordField label="Bagong password" value={next} onChange={setNext} autoComplete="new-password" />
-              <PasswordField label="Ulitin ang bagong password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
+              <PasswordField label="New password" value={next} onChange={setNext} autoComplete="new-password" />
+              <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
             </>
           )}
           {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}

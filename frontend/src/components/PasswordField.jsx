@@ -26,7 +26,7 @@ export default function PasswordField({ label, value, onChange, error, autoCompl
         <button
           type="button"
           onClick={() => setShown((s) => !s)}
-          aria-label={shown ? 'Itago ang password' : 'Ipakita ang password'}
+          aria-label={shown ? 'Hide password' : 'Show password'}
           aria-pressed={shown}
           className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 rounded-lg text-slate-500 hover:bg-slate-100"
         >

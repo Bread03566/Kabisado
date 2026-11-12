@@ -86,7 +86,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
             <button
               onClick={logout}
               className="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1.5"
-              title="Mag-logout"
+              title="Log out"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>

@@ -30,10 +30,10 @@ export default function RecoveryCodeScreen({ code, username, onContinue, isReset
     <div className="max-w-md mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
       <div className="flex items-center gap-2 text-amber-700 mb-2">
         <KeyRound className="w-5 h-5" />
-        <h2 className="text-lg font-extrabold">{isReset ? 'Bagong recovery code mo' : 'I-save ang recovery code mo'}</h2>
+        <h2 className="text-lg font-extrabold">{isReset ? 'Your new recovery code' : 'Save your recovery code'}</h2>
       </div>
       <p className="text-sm text-slate-600 mb-4">
-        Ito lang ang paraan para makabawi kung makalimutan mo ang password. Makikita mo ito <strong>ngayon lang</strong>.
+        This is the only way back into your account if you forget your password. You will see it <strong>only now</strong>.
       </p>
 
       <div
@@ -45,24 +45,23 @@ export default function RecoveryCodeScreen({ code, username, onContinue, isReset
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button type="button" onClick={copy} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50">
-          <Copy className="w-4 h-4" /> {copied ? 'Na-copy!' : 'Copy'}
+          <Copy className="w-4 h-4" /> {copied ? 'Copied!' : 'Copy'}
         </button>
         <button type="button" onClick={download} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50">
-          <Download className="w-4 h-4" /> I-download
+          <Download className="w-4 h-4" /> Download
         </button>
       </div>
 
       <div className="mt-4 flex gap-2 rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-800">
         <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
         <p>
-          Kapag nawala mo <strong>parehong</strong> ang password at ang code na ito, <strong>hindi na mababawi ang account</strong> —
-          walang email o phone na pwedeng pagbalikan, at hindi ka rin matutulungan ng admin.
+          If you lose <strong>both</strong> your password and this code, <strong>the account cannot be recovered</strong>. There is no email or phone to fall back on, and an admin cannot reset it for you.
         </p>
       </div>
 
       <label className="mt-4 flex items-start gap-2 text-sm text-slate-800 cursor-pointer">
         <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-1 h-4 w-4 accent-amber-500" />
-        <span>Na-save ko na ang recovery code ko.</span>
+        <span>I have saved my recovery code.</span>
       </label>
 
       <button
@@ -71,7 +70,7 @@ export default function RecoveryCodeScreen({ code, username, onContinue, isReset
         onClick={onContinue}
         className="mt-4 w-full rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
-        Tuloy sa Kabisado
+        Continue to Kabisado
       </button>
     </div>
   );

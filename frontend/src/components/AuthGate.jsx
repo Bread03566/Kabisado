@@ -47,8 +47,8 @@ export default function AuthGate({ children }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-50 px-6 text-center" role="status">
         <Mascot mood="sleepy" size="lg" />
-        <p className="text-base font-bold text-slate-800">Gising na si Kabi…</p>
-        <p className="text-sm text-slate-500">Waking up, this can take up to a minute.</p>
+        <p className="text-base font-bold text-slate-800">Kabi is waking up…</p>
+        <p className="text-sm text-slate-500">This can take up to a minute.</p>
       </div>
     );
   }

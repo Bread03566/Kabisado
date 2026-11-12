@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fil">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -30,15 +30,15 @@
 <body>
   <main>
     <div class="owl" aria-hidden="true">🦉</div>
-    <h1 id="title">Gigising na si Kabi…</h1>
-    <p id="msg">Libre lang ang server namin kaya natutulog ito kapag walang gumagamit. Hintay lang ng kaunti, kadalasan wala pang isang minuto.</p>
-    <div class="bar" role="progressbar" aria-label="Paggising ng server" aria-valuemin="0" aria-valuemax="90" aria-valuenow="0"><i id="fill"></i></div>
+    <h1 id="title">Kabi is waking up…</h1>
+    <p id="msg">Our server is on a free plan, so it sleeps when nobody is using it. Please wait a moment; it is usually under a minute.</p>
+    <div class="bar" role="progressbar" aria-label="Waking the server" aria-valuemin="0" aria-valuemax="90" aria-valuenow="0"><i id="fill"></i></div>
     <p id="status" role="status" aria-live="polite"></p>
     <div class="actions" id="actions">
-      <button type="button" id="retry">Subukan ulit</button>
-      <a class="btn" id="open" href="__API_ORIGIN__/">Buksan pa rin</a>
+      <button type="button" id="retry">Try again</button>
+      <a class="btn" id="open" href="__API_ORIGIN__/">Open anyway</a>
     </div>
-    <noscript><p>Kailangan ng JavaScript para sa page na ito. <a href="__API_ORIGIN__/">Pindutin dito para direktang buksan ang Kabisado.</a></p></noscript>
+    <noscript><p>This page needs JavaScript. <a href="__API_ORIGIN__/">Click here to open Kabisado directly.</a></p></noscript>
   </main>
 
   <script>
@@ -56,8 +56,8 @@
 
       function giveUp() {
         done = true; clearTimeout(timer); clearInterval(ticker);
-        $("title").textContent = "Mukhang inaantok pa si Kabi";
-        $("msg").textContent = "Hindi pa rin sumasagot ang server. Subukan ulit pagkalipas ng ilang sandali.";
+        $("title").textContent = "Kabi is still sleepy";
+        $("msg").textContent = "The server is still not answering. Please try again in a little while.";
         $("status").textContent = "";
         $("actions").style.display = "flex";
       }
@@ -65,8 +65,8 @@
       function ready() {
         done = true; clearTimeout(timer); clearInterval(ticker);
         setProgress(90000);
-        $("title").textContent = "Gising na si Kabi!";
-        $("status").textContent = "Papunta na…";
+        $("title").textContent = "Kabi is awake!";
+        $("status").textContent = "Taking you there…";
         window.location.replace(API + "/");
       }
 
@@ -87,15 +87,15 @@
 
       function start() {
         done = false; started = Date.now();
-        $("title").textContent = "Gigising na si Kabi…";
-        $("msg").textContent = "Libre lang ang server namin kaya natutulog ito kapag walang gumagamit. Hintay lang ng kaunti, kadalasan wala pang isang minuto.";
+        $("title").textContent = "Kabi is waking up…";
+        $("msg").textContent = "Our server is on a free plan, so it sleeps when nobody is using it. Please wait a moment; it is usually under a minute.";
         $("actions").style.display = "none";
         setProgress(0);
         clearInterval(ticker);
         ticker = setInterval(function () {
           var e = Date.now() - started;
           setProgress(e);
-          $("status").textContent = "Naghihintay… " + Math.round(e / 1000) + " segundo";
+          $("status").textContent = "Waiting… " + Math.round(e / 1000) + " s";
         }, 1000);
         check();
       }

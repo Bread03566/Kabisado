@@ -49,8 +49,8 @@ export default function AuthView({ gate, onRecover, onPrivacy }) {
     e.preventDefault();
     if (busy) return;
     const local = {};
-    if (isRegister && password !== confirm) local.confirm = 'Hindi magkapareho ang dalawang password.';
-    if (isRegister && !displayName.trim()) local.displayName = 'Ilagay ang pangalan mo.';
+    if (isRegister && password !== confirm) local.confirm = 'The two passwords do not match.';
+    if (isRegister && !displayName.trim()) local.displayName = 'Please enter your name.';
     if (Object.keys(local).length) return setErrors(local);
 
     setBusy(true);
@@ -65,7 +65,7 @@ export default function AuthView({ gate, onRecover, onPrivacy }) {
       }
     } catch (err) {
       if (isRegister) gate.hold(false);
-      const wait = err.status === 429 && err.retryAfter ? ` Subukan ulit pagkalipas ng ${err.retryAfter} segundo.` : '';
+      const wait = err.status === 429 && err.retryAfter ? ` Try again in ${err.retryAfter} seconds.` : '';
       setErrors({ [fieldForError(err)]: err.message + (err.status === 429 ? wait : '') });
     } finally {
       setBusy(false);
@@ -77,12 +77,12 @@ export default function AuthView({ gate, onRecover, onPrivacy }) {
       <div className="flex flex-col items-center text-center mb-5">
         <Mascot mood="happy" size="lg" />
         <h1 translate="no" className="notranslate mt-2 text-2xl font-extrabold text-slate-900">Kabisado</h1>
-        <p className="text-sm text-slate-500 italic">Aral ngayon, pasa bukas.</p>
+        <p className="text-sm text-slate-500 italic">Study today, pass tomorrow.</p>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
         <div role="tablist" className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 mb-5">
-          {[['login', 'Mag-login'], ['register', 'Gumawa ng account']].map(([key, text]) => (
+          {[['login', 'Log in'], ['register', 'Create account']].map(([key, text]) => (
             <button
               key={key}
               type="button"
@@ -98,7 +98,7 @@ export default function AuthView({ gate, onRecover, onPrivacy }) {
 
         <form onSubmit={submit} className="space-y-4" noValidate>
           {isRegister && (
-            <TextField label="Pangalan" value={displayName} onChange={setDisplayName} error={errors.displayName} autoComplete="name" maxLength={60} />
+            <TextField label="Name" value={displayName} onChange={setDisplayName} error={errors.displayName} autoComplete="name" maxLength={60} />
           )}
           <TextField
             label="Username"
@@ -107,7 +107,7 @@ export default function AuthView({ gate, onRecover, onPrivacy }) {
             error={errors.username}
             autoComplete="username"
             maxLength={64}
-            hint={isRegister ? '3–32 na letra, numero, _ o .' : undefined}
+            hint={isRegister ? '3–32 characters: letters, numbers, _ or .' : undefined}
           />
           <PasswordField
             label="Password"
@@ -115,10 +115,10 @@ export default function AuthView({ gate, onRecover, onPrivacy }) {
             onChange={setPassword}
             error={errors.password}
             autoComplete={isRegister ? 'new-password' : 'current-password'}
-            hint={isRegister ? 'Hindi bababa sa 10 character. Mas mahaba, mas ligtas.' : undefined}
+            hint={isRegister ? 'At least 10 characters. Longer is safer.' : undefined}
           />
           {isRegister && (
-            <PasswordField label="Ulitin ang password" value={confirm} onChange={setConfirm} error={errors.confirm} autoComplete="new-password" />
+            <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} error={errors.confirm} autoComplete="new-password" />
           )}
 
           {errors.form && <p role="alert" className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">{errors.form}</p>}
@@ -129,19 +129,19 @@ export default function AuthView({ gate, onRecover, onPrivacy }) {
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-amber-600 disabled:opacity-60"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isRegister ? 'Gumawa ng account' : 'Mag-login'}
+            {isRegister ? 'Create account' : 'Log in'}
           </button>
         </form>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
           {isRegister ? (
             <p>
-              Sa pag-sign up, sumasang-ayon kang basahin ang{' '}
+              By signing up you agree to read the{' '}
               <button type="button" onClick={onPrivacy} className="font-semibold text-amber-700 underline">privacy notice</button>.
             </p>
           ) : (
             <>
-              <button type="button" onClick={onRecover} className="font-semibold text-amber-700 underline">Nakalimutan ang password?</button>
+              <button type="button" onClick={onRecover} className="font-semibold text-amber-700 underline">Forgot your password?</button>
               <button type="button" onClick={onPrivacy} className="underline">Privacy</button>
             </>
           )}
