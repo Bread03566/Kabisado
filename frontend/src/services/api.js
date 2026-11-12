@@ -256,3 +256,29 @@ export async function generateWeakSpotQuiz(documentId) {
   return res.json();
 }
 
+
+// ==================== Account ====================
+async function accountCall(method, path, body) {
+  const res = await authFetch(`${API_BASE}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.ok) return;
+  const data = await res.json().catch(() => ({}));
+  const detail = Array.isArray(data.detail) ? data.detail.map((d) => d.msg).join(" ") : data.detail;
+  const err = new Error(detail || "Something went wrong. Please try again.");
+  err.status = res.status;
+  throw err;
+}
+
+export const changePassword = (currentPassword, newPassword, confirmPassword) =>
+  accountCall("POST", "/api/auth/password", {
+    current_password: currentPassword,
+    new_password: newPassword,
+    confirm_password: confirmPassword,
+  });
+
+export const deactivateAccount = (password) => accountCall("POST", "/api/auth/deactivate", { password });
+
+export const deleteAccount = (password) => accountCall("DELETE", "/api/auth/account", { password });

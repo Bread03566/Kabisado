@@ -1,8 +1,12 @@
-import React from 'react';
-import { BookOpen, Layers, BarChart3 } from 'lucide-react';
+import React, { useState } from 'react';
+import { BookOpen, Layers, BarChart3, LogOut, UserRound } from 'lucide-react';
+import { useAuth } from './AuthGate';
+import AccountModal from './AccountModal';
 import Mascot from './Mascot';
 
 export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
+  const { user, logout } = useAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
@@ -70,9 +74,28 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
             </button>
           )}
 
+          <div className="ml-auto md:ml-2 flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setAccountOpen(true)}
+              className="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 max-w-[130px]"
+              title="Account"
+            >
+              <UserRound className="w-4 h-4 shrink-0" />
+              <span className="truncate" translate="no">{user?.display_name}</span>
+            </button>
+            <button
+              onClick={logout}
+              className="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1.5"
+              title="Mag-logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </nav>
       </div>
 
+      {accountOpen && user && <AccountModal user={user} onClose={() => setAccountOpen(false)} />}
     </header>
   );
 }
