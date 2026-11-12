@@ -76,7 +76,9 @@ Kabisado-project/
 
 | Table | Description | Key Fields |
 |---|---|---|
-| `users` | Student profile | `id`, `username`, `email`, `created_at` |
+| `users` | Account (no email or phone) | `id`, `public_id`, `username`, `display_name`, `password_hash` (Argon2id), `recovery_hash`, `role` (`student`/`admin`), `is_active`, `last_login_at`, `subject_ref`, `created_at` |
+| `sessions` | Refresh-token sessions (only a SHA-256 of the token is stored) | `id`, `user_id`, `family_id`, `refresh_hash`, `created_at`, `expires_at`, `revoked_at`, `rotated_at` |
+| `login_attempts` | Login/recovery throttling | `key` (hash of username + IP), `count`, `window_start`, `locked_until` |
 | `documents` | Uploaded modules / handouts | `id`, `user_id`, `title`, `file_type`, `file_path`, `raw_text`, `summary_brief`, `summary_standard`, `summary_detailed`, `key_terms`, `created_at` |
 | `topics` | Topic sections of a document | `id`, `document_id`, `title`, `content`, `order_index`, `summary`, `created_at` |
 | `flashcards` | Memory cards | `id`, `document_id`, `topic_id`, `front`, `back`, `card_type`, `ease_factor`, `interval`, `repetitions`, `next_review`, `created_at` |
@@ -85,6 +87,16 @@ Kabisado-project/
 | `question_attempts`| Per-question answer history | `id`, `attempt_id`, `question_id`, `selected_index`, `is_correct`, `answered_at` |
 | `flags` | Student reports on bad cards/questions | `id`, `target_type` (flashcard/question), `target_id`, `reason`, `notes`, `created_at` |
 | `review_logs` | One row per flashcard review (feeds the study streak) | `id`, `flashcard_id`, `rating`, `reviewed_at` |
+
+---
+
+## 🔐 Accounts, Hosting & Operations
+
+- **Accounts:** username + password (Argon2id) with a one-time recovery code. No email, phone or Gmail. Roles are `student` and `admin`, enforced on the server on every request. Admins are created only from the command line (`python -m app.cli create-admin`), never through the website.
+- **Sessions:** a 15-minute access token kept in memory, plus a 7-day rotating refresh token in an HttpOnly, Secure, SameSite=Strict cookie.
+- **Hosting (₱0):** one Render Free web service runs the API **and** serves the built React app (same origin, so the cookie is first-party). The database is Supabase Free Postgres. GitHub Pages only hosts a small wake-up page for the sleeping free instance.
+- **Local development:** the Vite dev server proxies `/api` to the backend, and with `AUTO_CREATE_SCHEMA=true` and `COOKIE_SECURE=false` in `backend/.env` the backend creates its tables itself. Production uses Alembic migrations.
+- **Runbook:** deploy order, secrets, creating the admin, rotating the signing key, retention and known limits are in [`docs/operations.md`](docs/operations.md).
 
 ---
 
@@ -119,7 +131,9 @@ uvicorn app.main:app --reload --port 8000
 > The API will be running at `http://localhost:8000` with Swagger docs available at `http://localhost:8000/docs`.
 
 #### Setting Gemini API Key
-Open `backend/.env` and insert your Gemini API key (free from Google AI Studio):
+> **Gemini is globally disabled by default** (`GEMINI_ENABLED=false`). Even with a key present, no request is sent to Google and every feature uses the offline engine. Do not enable it until the owner has verified the Google billing setup and reviewed Google's terms and age restrictions for the audience.
+
+To enable it later, open `backend/.env`, set `GEMINI_ENABLED=true` and insert your Gemini API key (free from Google AI Studio):
 ```env
 GEMINI_API_KEY="your-gemini-api-key"
 GEMINI_MODEL="gemini-3.5-flash-lite"          # fast default

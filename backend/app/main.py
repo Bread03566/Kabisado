@@ -6,8 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database import ensure_schema
+from app.database import SessionLocal, ensure_schema
 from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat, auth, admin
+from app.security import retention
 from app.services.ai_service import ai_service
 from app.web import install_web
 
@@ -19,6 +20,13 @@ ensure_schema()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Enforce the 30-day retention promised in the privacy notice. A failure here must never stop the app.
+    try:
+        with SessionLocal() as db:
+            removed = retention.purge_expired(db)
+        logger.info("Retention purge removed %s", removed)
+    except Exception:
+        logger.exception("Retention purge failed; continuing startup")
     yield
 
 app = FastAPI(

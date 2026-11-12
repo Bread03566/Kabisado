@@ -18,6 +18,7 @@ from app.database import SessionLocal
 from app.models.models import User
 from app.schemas.auth import USERNAME_RE, normalize_username
 from app.security.passwords import hash_password, validate_password
+from app.security import retention
 from app.security.recovery import generate_recovery_code, hash_recovery_code
 
 
@@ -69,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     p_admin = sub.add_parser("create-admin", help="create an administrator account")
     p_admin.add_argument("--username", required=True)
     p_admin.add_argument("--display-name", default="")
+    sub.add_parser("purge-expired", help="delete login/session metadata older than 30 days")
     p_purge = sub.add_parser("purge-legacy", help="delete old client-id accounts that cannot log in")
     p_purge.add_argument("--yes", action="store_true", help="confirm the deletion")
     args = parser.parse_args(argv)
@@ -82,6 +84,9 @@ def main(argv: list[str] | None = None) -> int:
                 code = create_admin(db, args.username, args.display_name, password)
                 print("\nAdmin created. Save this recovery code now; it will not be shown again:\n")
                 print(f"    {code}\n")
+            elif args.command == "purge-expired":
+                removed = retention.purge_expired(db)
+                print(f"Deleted {removed['sessions']} session record(s) and {removed['login_attempts']} login-attempt record(s).")
             else:
                 count = db.query(User).filter(User.password_hash.is_(None)).count()
                 if not args.yes:
