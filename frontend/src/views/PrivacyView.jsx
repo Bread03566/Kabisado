@@ -45,6 +45,7 @@ export default function PrivacyView({ onBack }) {
 
       <Section title="AI (Gemini)">
         <p><strong>Gemini is switched off.</strong> None of your module content is sent to any AI service. The app uses a simple offline version of summaries, flashcards and quizzes.</p>
+        <p>If it is ever switched on, it is <strong>opt-in</strong>: only students aged 18 or older who turn it on in the account menu, after reading what is sent. You can turn it off again at any time, and your choice is logged.</p>
       </Section>
 
       <Section title="Deleting your account">

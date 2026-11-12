@@ -83,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     p_admin.add_argument("--display-name", default="")
     p_react = sub.add_parser("reactivate", help="re-enable a deactivated account")
     p_react.add_argument("--username", required=True)
+    sub.add_parser("verify-consent-log", help="check the Gemini consent log for edits or gaps")
     sub.add_parser("purge-expired", help="delete login/session metadata older than 30 days")
     p_purge = sub.add_parser("purge-legacy", help="delete old client-id accounts that cannot log in")
     p_purge.add_argument("--yes", action="store_true", help="confirm the deletion")
@@ -100,6 +101,14 @@ def main(argv: list[str] | None = None) -> int:
             elif args.command == "reactivate":
                 reactivate(db, args.username)
                 print(f"Account '{args.username}' is active again.")
+            elif args.command == "verify-consent-log":
+                from app.services import consent
+                problems = consent.verify_chain(db)
+                if problems:
+                    for line in problems:
+                        print(f"PROBLEM: {line}", file=sys.stderr)
+                    return 2
+                print("Consent log OK: every entry checks out.")
             elif args.command == "purge-expired":
                 removed = retention.purge_expired(db)
                 print(f"Deleted {removed['sessions']} session record(s) and {removed['login_attempts']} login-attempt record(s).")

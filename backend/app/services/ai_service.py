@@ -9,6 +9,7 @@ from google import genai
 from google.genai import types
 from google.genai import errors as genai_errors
 from app.config import settings
+from app.services import consent
 from app.services.segmenter_service import segmenter_service
 
 logger = logging.getLogger(__name__)
@@ -161,7 +162,12 @@ class AIService:
         # Checked on every call, not just at startup, so the switch holds even if a client exists.
         return bool(settings.GEMINI_ENABLED) and self.client is not None
 
-    async def _call_gemini_json(self, system_prompt: str, user_prompt: str, retry_count: int = 1) -> Any:
+    def may_use_gemini(self, user_id: Optional[int]) -> bool:
+        """Engine choice for one student: Gemini only if it is configured AND this student has consented."""
+        return self.is_api_configured() and consent.authorize(user_id)
+
+    async def _call_gemini_json(self, system_prompt: str, user_prompt: str, retry_count: int = 1,
+                                user_id: Optional[int] = None, feature: str = "ai") -> Any:
         """
         Calls Gemini requesting JSON, trying each configured model in turn when one is
         overloaded, too slow, or keeps returning malformed JSON.
@@ -172,18 +178,22 @@ class AIService:
         last_error: Optional[Exception] = None
         for model in settings.gemini_models:
             try:
-                return await self._call_model_json(model, system_prompt, user_prompt, retry_count)
+                return await self._call_model_json(model, system_prompt, user_prompt, retry_count, user_id, feature)
             except (asyncio.TimeoutError, genai_errors.APIError, ValueError) as err:
                 logger.warning(f"Gemini model {model} failed ({type(err).__name__}: {str(err)[:200]}); trying next option.")
                 last_error = err
         raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
 
-    async def _call_model_json(self, model: str, system_prompt: str, user_prompt: str, retry_count: int) -> Any:
+    async def _call_model_json(self, model: str, system_prompt: str, user_prompt: str, retry_count: int,
+                               user_id: Optional[int] = None, feature: str = "ai") -> Any:
         """Calls one model, validating the JSON and retrying once if malformed."""
         contents = user_prompt
         content_text = ""
 
         for attempt in range(retry_count + 1):
+            # Consent is re-read from the database before EVERY request, including retries and fallback models.
+            if not consent.reserve_gemini_call(user_id, feature):
+                raise PermissionError("Gemini is not permitted for this student right now.")
             response = await asyncio.wait_for(
                 self.client.aio.models.generate_content(
                     model=model,
@@ -222,7 +232,8 @@ class AIService:
         self,
         document_title: str,
         text_content: str,
-        length: str = "standard"  # "brief" | "standard" | "detailed"
+        length: str = "standard",  # "brief" | "standard" | "detailed"
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Generates a summary of the given length and a list of key terms with definitions.
@@ -230,7 +241,7 @@ class AIService:
         - Grounded only in uploaded text. Do not invent facts.
         - Structured JSON output: { "summary": "...", "key_terms": [{"term": "...", "definition": "..."}] }
         """
-        if not self.is_api_configured():
+        if not self.may_use_gemini(user_id):
             return self._fallback_summary(document_title, text_content, length)
 
         length_instructions = {
@@ -269,7 +280,7 @@ class AIService:
         )
 
         try:
-            result = await self._call_gemini_json(system_prompt, user_prompt)
+            result = await self._call_gemini_json(system_prompt, user_prompt, user_id=user_id, feature="summary")
             if not isinstance(result, dict) or "summary" not in result or "key_terms" not in result:
                 raise ValueError("JSON missing required summary or key_terms keys")
             result["key_terms"] = [
@@ -290,13 +301,14 @@ class AIService:
         topic_content: str,
         topic_id: Optional[int] = None,
         count: int = 8,
-        card_type: str = "mixed"  # "term", "qa", or "mixed"
+        card_type: str = "mixed",  # "term", "qa", or "mixed"
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Generates flashcards tagged by topic.
         Flashcard JSON: [ { "front": "...", "back": "...", "topic_id": "...", "card_type": "term" | "qa" } ]
         """
-        if not self.is_api_configured():
+        if not self.may_use_gemini(user_id):
             return self._fallback_flashcards(topic_title, topic_content, topic_id, count, card_type)
 
         system_prompt = (
@@ -325,7 +337,7 @@ class AIService:
         )
 
         try:
-            cards = await self._call_gemini_json(system_prompt, user_prompt)
+            cards = await self._call_gemini_json(system_prompt, user_prompt, user_id=user_id, feature="flashcards")
             if not isinstance(cards, list):
                 if isinstance(cards, dict) and "flashcards" in cards:
                     cards = cards["flashcards"]
@@ -389,7 +401,8 @@ class AIService:
         difficulty: str = "medium",  # "easy", "medium", "hard", "mixed"
         question_types: Optional[List[str]] = None,  # one entry per question, e.g. ["identification", "matching"]
         style: str = "mixed",  # "definition", "situational", "mixed"
-        question_styles: Optional[List[str]] = None  # one entry per question; overrides `style` when given
+        question_styles: Optional[List[str]] = None,  # one entry per question; overrides `style` when given
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Generates quiz questions of the requested types and style. Every returned dict has:
@@ -402,7 +415,7 @@ class AIService:
                 ("situational" if i % 2 == 0 else "definition") if style == "mixed" else style
                 for i in range(len(question_types))
             ]
-        if not self.is_api_configured():
+        if not self.may_use_gemini(user_id):
             return self._fallback_quiz(topic_title, topic_content, topic_id, count, difficulty, question_types)
 
         # Small models drift toward recall questions when asked for "a mix", so each slot names its style
@@ -428,7 +441,7 @@ class AIService:
         )
 
         try:
-            raw = await self._call_gemini_json(system_prompt, user_prompt)
+            raw = await self._call_gemini_json(system_prompt, user_prompt, user_id=user_id, feature="quiz")
             if isinstance(raw, dict):
                 raw = raw.get("questions", [])
             if not isinstance(raw, list):
@@ -674,7 +687,8 @@ class AIService:
         topics: List[Dict[str, Any]],
         question: str,
         explain_like_new: bool = False,
-        conversation_history: Optional[List[Dict[str, str]]] = None
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Explains confusing parts of a document.
@@ -690,7 +704,7 @@ class AIService:
           "found_in_document": true/false
         }
         """
-        if not self.is_api_configured():
+        if not self.may_use_gemini(user_id):
             return self._fallback_chat(document_title, topics, question, explain_like_new)
 
         context_blocks = []
@@ -733,7 +747,7 @@ class AIService:
         )
 
         try:
-            res = await self._call_gemini_json(system_prompt, user_prompt)
+            res = await self._call_gemini_json(system_prompt, user_prompt, user_id=user_id, feature="chat")
             if isinstance(res, dict) and "answer" in res:
                 return res
             return self._fallback_chat(document_title, topics, question, explain_like_new)

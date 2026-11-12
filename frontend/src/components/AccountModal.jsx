@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, Loader2, X } from 'lucide-react';
 import PasswordField from './PasswordField';
+import ConsentPanel from './ConsentPanel';
 import authClient from '../services/authClient';
 import { changePassword, deactivateAccount, deleteAccount, exportMyData } from '../services/api';
 
@@ -57,7 +58,7 @@ export default function AccountModal({ user, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-label="Account">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-extrabold text-slate-900">{user.display_name}</h2>
@@ -71,6 +72,8 @@ export default function AccountModal({ user, onClose }) {
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           Download my data
         </button>
+
+        <ConsentPanel />
 
         <div role="tablist" className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
           {tabs.map(([key, text]) => (

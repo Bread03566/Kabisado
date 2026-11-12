@@ -32,6 +32,7 @@ async def summarize_document(
                 detail="Could not find this specific topic in the document."
             )
         ai_res = await ai_service.generate_summary(
+            user_id=user.id,
             document_title=f"{doc.title} - {topic.title}",
             text_content=topic.content,
             length=payload.length
@@ -62,6 +63,7 @@ async def summarize_document(
 
     # Generate via AI service
     ai_res = await ai_service.generate_summary(
+            user_id=user.id,
         document_title=doc.title,
         text_content=doc.raw_text,
         length=payload.length

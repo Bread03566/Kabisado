@@ -176,7 +176,7 @@ def test_regenerate_summary_bypasses_cache(client, monkeypatch):
     doc = make_doc(client)
     calls = []
 
-    async def fake_summary(document_title, text_content, length="standard"):
+    async def fake_summary(document_title, text_content, length="standard", user_id=None):
         calls.append(length)
         return {"summary": f"Summary #{len(calls)}", "key_terms": [{"term": "Cortes", "definition": "The Spanish parliament."}]}
 

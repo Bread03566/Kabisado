@@ -89,6 +89,7 @@ async def generate_flashcards(
 
     async def generate(topic, count):
         return await ai_service.generate_flashcards(
+            user_id=user.id,
             document_title=doc.title,
             topic_title=topic.title,
             topic_content=topic.content,

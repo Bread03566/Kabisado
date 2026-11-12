@@ -1,7 +1,7 @@
 import datetime
 import secrets
 import uuid
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, CheckConstraint, true
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, CheckConstraint, true, false
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -29,6 +29,10 @@ class User(Base):
     last_login_at = Column(DateTime, nullable=True)
     # Random pseudonymous reference for the later consent/audit logs; never derived from the user id.
     subject_ref = Column(String(32), unique=True, nullable=False, default=new_subject_ref)
+    # Gemini consent (see app.services.consent): off unless the student opts in, on a site where Gemini is enabled.
+    age_band = Column(String(10), nullable=True)  # "adult" once self-declared at consent time; never collected otherwise
+    gemini_consent = Column(Boolean, nullable=False, default=False, server_default=false())
+    consent_policy_version = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=utc_now)
 
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
@@ -216,3 +220,27 @@ class AuditLog(Base):
     action = Column(String(40), nullable=False)
     target_ref = Column(String(36), nullable=False)       # the student's public_id
     created_at = Column(DateTime, default=utc_now, index=True)
+
+
+class ConsentLog(Base):
+    """Append-only, hash-chained record of a student's Gemini consent decisions (chain is per student)."""
+    __tablename__ = "consent_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    event = Column(String(20), nullable=False)  # grant | withdraw | policy_reask
+    policy_version = Column(String(10), nullable=False)
+    prev_hash = Column(String(64), nullable=False, default="")
+    row_hash = Column(String(64), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+
+
+class AiUsage(Base):
+    """One row per request actually sent to Gemini. Never stores prompts or answers."""
+    __tablename__ = "ai_usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    feature = Column(String(20), nullable=False)
+    engine = Column(String(10), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utc_now, index=True)

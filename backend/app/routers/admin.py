@@ -32,6 +32,7 @@ def overview(_: User = Depends(require_admin), db: Session = Depends(get_db)):
         "flashcards": count(Flashcard),
         "questions": count(Question),
         "quiz_attempts": count(QuizAttempt),
+        "gemini_consents": count(User, User.role == "student", User.gemini_consent.is_(True)),
     }
 
 

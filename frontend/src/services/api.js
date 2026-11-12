@@ -283,6 +283,25 @@ export const deactivateAccount = (password) => accountCall("POST", "/api/auth/de
 
 export const deleteAccount = (password) => accountCall("DELETE", "/api/auth/account", { password });
 
+// ==================== Gemini consent ====================
+async function consentCall(method, path, body) {
+  const res = await authFetch(`${API_BASE}/api/consent${path}`, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Could not save this setting.");
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+export const getConsent = () => consentCall("GET", "");
+export const giveGeminiConsent = (policyVersion) =>
+  consentCall("POST", "/gemini", { confirm_adult: true, accept_disclosure: true, policy_version: policyVersion });
+export const withdrawGeminiConsent = () => consentCall("DELETE", "/gemini");
+
 /** Downloads everything the signed-in student owns as a JSON file. */
 export async function exportMyData() {
   const res = await authFetch(`${API_BASE}/api/auth/export`);

@@ -44,6 +44,7 @@ async def ask_kabisado(
         topics_data = [{"id": 0, "title": doc.title, "content": doc.raw_text}]
 
     result = await ai_service.answer_document_question(
+            user_id=user.id,
         document_title=doc.title,
         topics=topics_data,
         question=payload.question.strip(),

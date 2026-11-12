@@ -137,3 +137,15 @@ GitHub disables scheduled workflows on a repository with no activity for about 6
 ## What is stored from uploads
 
 The original PDF/DOCX is **discarded** right after its text is extracted (Render's disk is wiped on every restart, so keeping it would be unreliable and would store more of a student's data than needed). Only the extracted text is kept. Limits: 10 MB per upload, 400,000 characters per module, 25 modules and about 5 MB of text per student, and new modules are refused when the whole database text passes 90% of a 300 MB budget (`GLOBAL_TEXT_QUOTA_MB`). Students can download all their data from the account menu ("Download my data").
+
+## Gemini consent (Phase 4)
+
+Gemini stays **off** unless `GEMINI_ENABLED=true` *and* a key is set, and even then each student must opt in (18+ self-declaration, plain-language disclosure, logged). The gate (`app/services/consent.py`) re-reads the student's consent from the database before **every** request to Google, including retries and fallback models, so turning it off takes effect on the next request. It fails closed: unknown student, inactive account, stale policy version, or an exhausted daily budget (`GEMINI_USER_DAILY_CALLS` default 30 per student, `GEMINI_GLOBAL_DAILY_CALLS` default 300 for the site) all fall back to the offline engine. Only `ai_service.py` may import Google's client, and a test enforces that.
+
+Bumping `CURRENT_POLICY_VERSION` makes everyone's consent lapse until they accept the new notice.
+
+The consent log is hash-chained per student. Check it with `python -m app.cli verify-consent-log` (exit code 2 and a list of problems if an entry was edited or removed). Honest limit: whoever owns the Supabase project can change the database, so this detects edits, it does not prevent them by the infrastructure owner. The log is deleted with the account. An admin sees only how many students have consented.
+
+Before enabling Gemini you must personally confirm that the key's Google project has no billing account, and review Google's terms and the under-18 restriction. A request already sent when someone withdraws may complete (at most one 60-second call), and sent content cannot be recalled.
+
+This release includes migration `0004`: follow "Releasing a version that adds a migration" above.

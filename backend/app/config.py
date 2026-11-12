@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-3.5-flash-lite"
     # Comma-separated models tried in order when the main one is overloaded or slow
     GEMINI_FALLBACK_MODELS: str = "gemini-3.8-flash"
+    GEMINI_USER_DAILY_CALLS: int = 30       # per student per UTC day
+    GEMINI_GLOBAL_DAILY_CALLS: int = 300    # whole site per UTC day, below the free-tier limits
     GEMINI_TIMEOUT_SECONDS: float = 60.0
 
     @property

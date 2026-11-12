@@ -74,6 +74,7 @@ async def create_questions(
 
     async def generate(topic, count) -> List[Dict[str, Any]]:
         return await ai_service.generate_quiz_questions(
+            user_id=doc.user_id,
             document_title=doc.title,
             topic_title=topic.title,
             topic_content=topic.content,
@@ -93,6 +94,7 @@ async def create_questions(
         topics = [topic for topic, _ in plan]
         combined = "\n\n".join(f"{t.title}\n{t.content}" for t in topics)[:15000]
         matching_sets = await ai_service.generate_quiz_questions(
+            user_id=doc.user_id,
             document_title=doc.title,
             topic_title=doc.title,
             topic_content=combined,
