@@ -149,7 +149,8 @@ class AIService:
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
         self.client = None
-        if self.api_key and self.api_key.strip() and not self.api_key.startswith("demo_"):
+        if (settings.GEMINI_ENABLED and self.api_key and self.api_key.strip()
+                and not self.api_key.startswith("demo_")):
             try:
                 self.client = genai.Client(api_key=self.api_key)
             except Exception as e:
@@ -157,15 +158,16 @@ class AIService:
                 self.client = None
 
     def is_api_configured(self) -> bool:
-        return self.client is not None
+        # Checked on every call, not just at startup, so the switch holds even if a client exists.
+        return bool(settings.GEMINI_ENABLED) and self.client is not None
 
     async def _call_gemini_json(self, system_prompt: str, user_prompt: str, retry_count: int = 1) -> Any:
         """
         Calls Gemini requesting JSON, trying each configured model in turn when one is
         overloaded, too slow, or keeps returning malformed JSON.
         """
-        if not self.client:
-            raise RuntimeError("Gemini API key is not configured.")
+        if not self.is_api_configured():
+            raise RuntimeError("Gemini is disabled or not configured.")
 
         last_error: Optional[Exception] = None
         for model in settings.gemini_models:

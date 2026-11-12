@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_MB: int = 20
 
-    # Gemini AI
+    # Gemini AI. Global kill switch: nothing is ever sent to Google unless this is true, even when a
+    # key is set. Stays false until the owner has verified billing and reviewed Google's terms.
+    GEMINI_ENABLED: bool = False
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-3.5-flash-lite"
     # Comma-separated models tried in order when the main one is overloaded or slow
