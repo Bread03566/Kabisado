@@ -29,6 +29,15 @@ def build_engine(url: str):
         pool_pre_ping=True,
         pool_recycle=300,
         echo=False,
+        connect_args={
+            # Never wait forever on a silent network: fail fast so the platform restarts us and the log says why.
+            "connect_timeout": settings.DB_CONNECT_TIMEOUT,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 3,
+            "tcp_user_timeout": 30000,  # ms: drop a connection whose data goes unacknowledged
+        },
     )
 
 

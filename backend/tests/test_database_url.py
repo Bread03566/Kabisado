@@ -27,3 +27,37 @@ def test_sqlite_engine_keeps_thread_check_off(tmp_path):
     engine = build_engine(f"sqlite:///{tmp_path.as_posix()}/t.db")
     with engine.connect() as conn:
         assert conn.exec_driver_sql("pragma foreign_keys").scalar() == 1
+
+
+def test_a_database_that_accepts_the_connection_but_never_answers_times_out(monkeypatch):
+    """Render once sat silent for ~18 minutes at startup. A stalled database must fail fast instead."""
+    import socket
+    import threading
+    import time
+
+    from sqlalchemy.exc import OperationalError
+
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "DB_CONNECT_TIMEOUT", 2)
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen(5)  # accepts TCP connections in the kernel, never speaks the Postgres protocol
+    port = server.getsockname()[1]
+    outcome = {}
+
+    def attempt():
+        engine = build_engine(f"postgresql+psycopg://u:p@127.0.0.1:{port}/db")
+        start = time.time()
+        try:
+            engine.connect()
+        except OperationalError as err:
+            outcome["error"] = err
+        outcome["seconds"] = time.time() - start
+
+    worker = threading.Thread(target=attempt, daemon=True)
+    worker.start()
+    worker.join(timeout=10)
+    server.close()
+    assert not worker.is_alive(), "connect() hung instead of timing out"
+    assert "error" in outcome and outcome["seconds"] < 8

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_MB: int = 10
     DB_POOL_SIZE: int = 3
     DB_MAX_OVERFLOW: int = 2
+    DB_CONNECT_TIMEOUT: int = 10  # seconds to wait for Postgres before failing, instead of hanging
     # False in production: the schema is owned by Alembic and the app only checks its revision.
     AUTO_CREATE_SCHEMA: bool = False
 
