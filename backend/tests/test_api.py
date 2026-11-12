@@ -1,13 +1,20 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from tests.helpers import register_user
 
-ALICE = {"X-Client-Id": "alice-0123456789abcdef"}
-BOB = {"X-Client-Id": "bob-0123456789abcdef01"}
+
+def signed_in_client(**kwargs):
+    """A TestClient for a freshly registered student (use as a context manager)."""
+    c = TestClient(app, **kwargs)
+    headers, _, _ = register_user(c)
+    c.headers.update(headers)
+    return c
+
 
 @pytest.fixture(scope="module")
 def client():
-    with TestClient(app, headers=ALICE) as c:
+    with signed_in_client() as c:
         yield c
 
 def test_health_check(client):
@@ -238,7 +245,7 @@ def test_unexpected_errors_do_not_leak_details(monkeypatch):
         raise RuntimeError("internal secret path C:/server/db")
 
     monkeypatch.setattr(ai_module.ai_service, "answer_document_question", boom)
-    with TestClient(app, raise_server_exceptions=False, headers=ALICE) as c:
+    with signed_in_client(raise_server_exceptions=False) as c:
         doc = make_doc(c)
         res = c.post(f"/api/documents/{doc['id']}/chat", json={"question": "Who led the meetings?"})
     assert res.status_code == 500
@@ -278,8 +285,8 @@ def test_check_endpoint_forgives_typos_in_typed_answers(client):
     assert bad["correct_answer"] == answer
 
 
-def test_each_browser_only_sees_its_own_documents():
-    with TestClient(app, headers=ALICE) as alice, TestClient(app, headers=BOB) as bob:
+def test_each_student_only_sees_their_own_documents():
+    with signed_in_client() as alice, signed_in_client() as bob:
         doc = make_doc(alice, title="Alice private notes")
         card = alice.post("/api/flashcards", json={"document_id": doc["id"], "front": "Q", "back": "A", "card_type": "term"})
         assert card.status_code == 201
@@ -309,10 +316,7 @@ def test_each_browser_only_sees_its_own_documents():
         assert alice.get("/api/progress/dashboard").json()["total_cards"] >= 1
 
 
-def test_requests_without_a_valid_client_id_are_rejected():
+def test_anonymous_requests_are_rejected_but_health_is_open():
     with TestClient(app) as anon:
-        assert anon.get("/api/documents").status_code == 400
-    with TestClient(app, headers={"X-Client-Id": "short"}) as bad:
-        assert bad.get("/api/documents").status_code == 400
-    with TestClient(app) as anon:
+        assert anon.get("/api/documents").status_code == 401
         assert anon.get("/api/health").status_code == 200

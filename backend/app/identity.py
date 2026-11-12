@@ -1,41 +1,30 @@
 """
-Per-browser identity. The frontend generates a random ID once, keeps it in localStorage and sends it
-as the X-Client-Id header. Each ID maps to its own User row, so one browser never sees another's
-documents. This is separation, not security: anyone who learns an ID can act as that browser.
+Who is calling, and what may they touch.
+
+Identity comes from a bearer access token (see app.security.bearer); the role and active state are read from
+the database on every request. Routers keep importing `get_current_user` and `get_owned_document` from here.
 """
-import re
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.models import Document, User
-
-CLIENT_ID_HEADER = "X-Client-Id"
-CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9-]{16,64}$")
+from app.security.bearer import authenticate_bearer
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    client_id = request.headers.get(CLIENT_ID_HEADER, "")
-    if not CLIENT_ID_PATTERN.match(client_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing or invalid client ID. Please refresh the page and try again."
-        )
+    return authenticate_bearer(request, db)
 
-    username = f"client-{client_id}"
-    user = db.query(User).filter_by(username=username).first()
-    if user:
-        return user
 
-    user = User(username=username, display_name=username[:60])  # temporary: removed with client-id auth in Task 10
-    db.add(user)
-    try:
-        db.commit()
-    except IntegrityError:  # two first requests from a new browser raced; the other one won
-        db.rollback()
-        return db.query(User).filter_by(username=username).one()
-    db.refresh(user)
+def require_student(user: User = Depends(get_current_user)) -> User:
+    if user.role != "student":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This area is for student accounts.")
+    return user
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrators only.")
     return user
 
 
