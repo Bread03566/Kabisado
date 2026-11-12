@@ -75,12 +75,12 @@ def test_concurrent_registration_of_one_username_has_one_winner():
 
 
 def test_overlong_password_rejected_before_any_hashing(client, monkeypatch):
-    import app.routers.auth as auth_router
+    import app.routers.auth as auth_router  # noqa
 
-    async def boom(_):
+    def boom(_):
         raise AssertionError("hash_password must not run for oversized input")
 
-    monkeypatch.setattr(auth_router, "hash_password", boom)
+    monkeypatch.setattr(auth_router, "hash_password_sync", boom)
     for size in (129, 5_000_000):
         pw = ("Aa1!" * (size // 4 + 1))[:size]
         res = client.post("/api/auth/register", json=body(unique_username(), password=pw))

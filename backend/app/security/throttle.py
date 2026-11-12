@@ -61,3 +61,32 @@ def record_success(db: Session, username: str, ip: str) -> None:
     if row is not None:
         db.delete(row)
     db.commit()
+
+
+REGISTER_WINDOW = datetime.timedelta(hours=1)
+
+
+def register_gate(db: Session, ip: str) -> None:
+    """Count one registration attempt for this IP; 429 once it exceeds the hourly limit. Each registration
+    costs two Argon2 hashes on a very small CPU, so unlimited sign-ups would starve everyone's logins."""
+    from app.config import settings  # read at call time so the limit can be changed without re-importing
+
+    key, now = make_key("register", ip), _now()
+    row = db.get(LoginAttempt, key)
+    if row is None:
+        db.add(LoginAttempt(key=key, count=1, window_start=now))
+    elif now - row.window_start > REGISTER_WINDOW:
+        row.count, row.window_start = 1, now
+    elif row.count >= settings.REGISTER_LIMIT_PER_HOUR:
+        wait = max(1, math.ceil((row.window_start + REGISTER_WINDOW - now).total_seconds()))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many new accounts from this network. Please try again later.",
+            headers={"Retry-After": str(wait)},
+        )
+    else:
+        row.count += 1
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()

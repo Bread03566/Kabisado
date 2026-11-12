@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.account_cleanup import delete_user_files
 from app.models.models import User
 from app.schemas.auth import USERNAME_RE, normalize_username
 from app.security.passwords import hash_password, validate_password
@@ -55,10 +56,20 @@ def create_admin(db: Session, username: str, display_name: str, password: str) -
     return code
 
 
+def reactivate(db: Session, username: str) -> None:
+    """Undo a deactivation (the student cannot do this themselves because they cannot log in)."""
+    user = db.query(User).filter(User.username == normalize_username(username)).first()
+    if user is None:
+        raise CliError(f"No user named '{username}'.")
+    user.is_active = True
+    db.commit()
+
+
 def purge_legacy(db: Session) -> int:
     """Delete accounts that cannot log in (the old per-browser client-id users). Returns how many."""
     legacy = db.query(User).filter(User.password_hash.is_(None)).all()
     for user in legacy:
+        delete_user_files(db, user)
         db.delete(user)  # ORM cascade removes their documents, attempts and sessions
     db.commit()
     return len(legacy)
@@ -70,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
     p_admin = sub.add_parser("create-admin", help="create an administrator account")
     p_admin.add_argument("--username", required=True)
     p_admin.add_argument("--display-name", default="")
+    p_react = sub.add_parser("reactivate", help="re-enable a deactivated account")
+    p_react.add_argument("--username", required=True)
     sub.add_parser("purge-expired", help="delete login/session metadata older than 30 days")
     p_purge = sub.add_parser("purge-legacy", help="delete old client-id accounts that cannot log in")
     p_purge.add_argument("--yes", action="store_true", help="confirm the deletion")
@@ -84,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
                 code = create_admin(db, args.username, args.display_name, password)
                 print("\nAdmin created. Save this recovery code now; it will not be shown again:\n")
                 print(f"    {code}\n")
+            elif args.command == "reactivate":
+                reactivate(db, args.username)
+                print(f"Account '{args.username}' is active again.")
             elif args.command == "purge-expired":
                 removed = retention.purge_expired(db)
                 print(f"Deleted {removed['sessions']} session record(s) and {removed['login_attempts']} login-attempt record(s).")

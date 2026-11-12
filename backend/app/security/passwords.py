@@ -4,6 +4,7 @@ Hashing runs on a dedicated two-thread pool: Argon2 is CPU-heavy and Render Free
 than two at once only makes every login slower, and running it on the event loop would stall all requests.
 """
 import asyncio
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -67,3 +68,22 @@ async def verify_password(hash_: str | None, password: str) -> bool:
 
 def needs_rehash(hash_: str) -> bool:
     return _hasher.check_needs_rehash(hash_)
+
+
+# Synchronous API for plain `def` request handlers (which FastAPI runs in its threadpool). A semaphore keeps
+# at most two hashes in flight, matching the async pool above: each one needs ~19 MB and a lot of CPU.
+_slots = threading.BoundedSemaphore(2)
+
+
+def hash_password_sync(password: str) -> str:
+    with _slots:
+        return _hash_sync(password)
+
+
+def verify_password_sync(hash_: str | None, password: str) -> bool:
+    """Like verify_password: with no stored hash it still does a full verification, then returns False."""
+    with _slots:
+        if not hash_:
+            _verify_sync(_DUMMY_HASH, password)
+            return False
+        return _verify_sync(hash_, password)

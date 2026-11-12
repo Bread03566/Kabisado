@@ -21,3 +21,4 @@ os.environ.setdefault("ARGON2_TIME_COST", "1")
 os.environ.setdefault("COOKIE_SECURE", "true")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
 os.environ.setdefault("DEBUG", "true")
+os.environ.setdefault("REGISTER_LIMIT_PER_HOUR", "100000")  # the suite registers hundreds of users from one IP

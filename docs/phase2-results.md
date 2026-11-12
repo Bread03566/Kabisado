@@ -29,6 +29,7 @@ These need the Render service and the Supabase database, which are outside this 
 - [ ] Page reload keeps the student signed in (cookie) on Render.
 - [ ] Cold start time through the GitHub Pages wake-up page, and the redirect.
 - [ ] Browser checks that cannot be automated: Chrome, Safari and Firefox `__Host-` cookie behaviour; phone width; keyboard navigation of the sign-in, register and recovery forms; copy and download of the recovery code. **No browser was available while building, so the React screens have been compiled, linted and unit-tested (client only) but never looked at.**
+- [ ] **Throttle client IP on Render:** the API takes the last `X-Forwarded-For` hop (`TRUST_PROXY=true`). Log one real request header on Render and confirm that hop is the student, not Render's proxy. If it is a proxy address, every student shares one login throttle and five wrong guesses for any username lock that username for everyone.
 - [ ] The first Render build of the frontend (a `lightningcss` binary error appeared once locally and did not repeat; see the runbook's troubleshooting table).
 
 Record the results of these below when they are run, including any failures.

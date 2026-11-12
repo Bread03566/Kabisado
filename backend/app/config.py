@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     ARGON2_MEMORY_KIB: int = 19456
     ARGON2_TIME_COST: int = 2
     STATIC_DIR: str = "static"  # built frontend, present in the Docker image
+    REGISTER_LIMIT_PER_HOUR: int = 20  # new accounts per client IP per hour
     TRUST_PROXY: bool = False  # true behind Render's proxy: the client IP is the last X-Forwarded-For hop
 
     # Gemini AI. Global kill switch: nothing is ever sent to Google unless this is true, even when a

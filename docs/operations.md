@@ -47,6 +47,7 @@ It asks for the password twice (hidden) and prints a **recovery code once**. Sto
 
 Other commands:
 
+- `python -m app.cli reactivate --username <name>` re-enables an account its owner deactivated (they cannot do it themselves because they cannot log in).
 - `python -m app.cli purge-expired` deletes login/session metadata older than 30 days (also runs automatically at every API start).
 - `python -m app.cli purge-legacy --yes` deletes the old per-browser accounts from before logins existed (rows with no password). Run once after migrating if you do not need that old data; without `--yes` it only reports the count.
 

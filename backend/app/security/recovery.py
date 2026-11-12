@@ -2,7 +2,7 @@
 import base64
 import secrets
 
-from app.security.passwords import hash_password, verify_password
+from app.security.passwords import hash_password, hash_password_sync, verify_password, verify_password_sync
 
 
 def generate_recovery_code() -> str:
@@ -21,3 +21,11 @@ async def hash_recovery_code(code: str) -> str:
 
 async def verify_recovery_code(hash_: str | None, code: str) -> bool:
     return await verify_password(hash_, normalize_recovery_code(code))
+
+
+def hash_recovery_code_sync(code: str) -> str:
+    return hash_password_sync(normalize_recovery_code(code))
+
+
+def verify_recovery_code_sync(hash_: str | None, code: str) -> bool:
+    return verify_password_sync(hash_, normalize_recovery_code(code))

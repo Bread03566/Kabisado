@@ -10,14 +10,15 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.account_cleanup import delete_user_files
 from app.models.models import User
 from app.schemas.auth import (
     ChangePasswordRequest, LoginRequest, PasswordConfirmRequest, RecoverRequest, RecoveryTokenResponse, RegisterRequest, TokenResponse, UserOut,
 )
 from app.security import throttle
 from app.security.bearer import get_bearer_user
-from app.security.passwords import hash_password, needs_rehash, validate_password, verify_password
-from app.security.recovery import generate_recovery_code, hash_recovery_code, verify_recovery_code
+from app.security.passwords import hash_password_sync, needs_rehash, validate_password, verify_password_sync
+from app.security.recovery import generate_recovery_code, hash_recovery_code_sync, verify_recovery_code_sync
 from app.security.sessions import (
     SessionError, issue_session, revoke_all_for_user, revoke_session, rotate_session,
 )
@@ -83,17 +84,18 @@ def _start_session(db: Session, user: User, request: Request, response: Response
 
 
 @router.post("/register", response_model=RecoveryTokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def register(payload: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     try:
         validate_password(payload.password, payload.username)
     except ValueError as err:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(err))
+    throttle.register_gate(db, client_ip(request))
     if db.query(User.id).filter(User.username == payload.username).first():
         raise HTTPException(status.HTTP_409_CONFLICT, "That username is already taken.")
 
     recovery_code = generate_recovery_code()
-    password_hash = await hash_password(payload.password)
-    recovery_hash = await hash_recovery_code(recovery_code)
+    password_hash = hash_password_sync(payload.password)
+    recovery_hash = hash_recovery_code_sync(recovery_code)
     user = User(username=payload.username, display_name=payload.display_name,
                 password_hash=password_hash, recovery_hash=recovery_hash)  # role/is_active use safe defaults
     db.add(user)
@@ -107,18 +109,18 @@ async def register(payload: RegisterRequest, request: Request, response: Respons
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     ip = client_ip(request)
     throttle.check_allowed(db, payload.username, ip)
     user = db.query(User).filter(User.username == payload.username).first()
-    ok = await verify_password(user.password_hash if user else None, payload.password)
+    ok = verify_password_sync(user.password_hash if user else None, payload.password)
     if not (user and ok):
         throttle.record_failure(db, payload.username, ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, BAD_LOGIN)
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been deactivated.")
     if needs_rehash(user.password_hash):
-        user.password_hash = await hash_password(payload.password)
+        user.password_hash = hash_password_sync(payload.password)
     user.last_login_at = _naive_now()
     throttle.record_success(db, payload.username, ip)  # also commits the changes above
     access = _start_session(db, user, request, response)
@@ -126,7 +128,7 @@ async def login(payload: LoginRequest, request: Request, response: Response, db:
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(request: Request, response: Response, db: Session = Depends(get_db),
+def refresh(request: Request, response: Response, db: Session = Depends(get_db),
                   _: None = Depends(require_cookie_csrf)):
     token = request.cookies.get(settings.refresh_cookie_name)
     if not token:
@@ -144,7 +146,7 @@ async def refresh(request: Request, response: Response, db: Session = Depends(ge
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(request: Request, db: Session = Depends(get_db), _: None = Depends(require_cookie_csrf)):
+def logout(request: Request, db: Session = Depends(get_db), _: None = Depends(require_cookie_csrf)):
     token = request.cookies.get(settings.refresh_cookie_name)
     if token:
         revoke_session(db, token)
@@ -154,7 +156,7 @@ async def logout(request: Request, db: Session = Depends(get_db), _: None = Depe
 
 
 @router.post("/recover", response_model=RecoveryTokenResponse)
-async def recover(payload: RecoverRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def recover(payload: RecoverRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     ip, throttle_name = client_ip(request), "recover:" + payload.username
     throttle.check_allowed(db, throttle_name, ip)
     try:
@@ -162,7 +164,7 @@ async def recover(payload: RecoverRequest, request: Request, response: Response,
     except ValueError as err:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(err))
     user = db.query(User).filter(User.username == payload.username).first()
-    ok = await verify_recovery_code(user.recovery_hash if user else None, payload.recovery_code)
+    ok = verify_recovery_code_sync(user.recovery_hash if user else None, payload.recovery_code)
     if not (user and ok):
         throttle.record_failure(db, throttle_name, ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, BAD_RECOVERY)
@@ -170,8 +172,8 @@ async def recover(payload: RecoverRequest, request: Request, response: Response,
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been deactivated.")
 
     new_code = generate_recovery_code()
-    user.password_hash = await hash_password(payload.new_password)
-    user.recovery_hash = await hash_recovery_code(new_code)
+    user.password_hash = hash_password_sync(payload.new_password)
+    user.recovery_hash = hash_recovery_code_sync(new_code)
     db.commit()
     revoke_all_for_user(db, user.id)
     throttle.record_success(db, throttle_name, ip)
@@ -184,26 +186,26 @@ def me(user: User = Depends(get_bearer_user)):
     return user
 
 
-async def _confirm_password(db: Session, request: Request, user: User, password: str) -> None:
+def _confirm_password(db: Session, request: Request, user: User, password: str) -> None:
     """Re-check the password for sensitive actions. Wrong password is 403 (not 401, which the app treats as
     an expired session) and shares a throttle so a stolen access token cannot be used to guess it."""
     key, ip = f"pw:{user.id}", client_ip(request)
     throttle.check_allowed(db, key, ip)
-    if not await verify_password(user.password_hash, password):
+    if not verify_password_sync(user.password_hash, password):
         throttle.record_failure(db, key, ip)
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Incorrect password.")
     throttle.record_success(db, key, ip)
 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
-async def change_password(payload: ChangePasswordRequest, request: Request,
+def change_password(payload: ChangePasswordRequest, request: Request,
                           user: User = Depends(get_bearer_user), db: Session = Depends(get_db)):
     try:
         validate_password(payload.new_password, user.username)
     except ValueError as err:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(err))
-    await _confirm_password(db, request, user, payload.current_password)
-    user.password_hash = await hash_password(payload.new_password)
+    _confirm_password(db, request, user, payload.current_password)
+    user.password_hash = hash_password_sync(payload.new_password)
     current_sid = decode_access_token(request.headers["Authorization"].split(" ", 1)[1].strip())["sid"]
     db.query(UserSession).filter(
         UserSession.user_id == user.id, UserSession.id != current_sid, UserSession.revoked_at.is_(None)
@@ -213,9 +215,9 @@ async def change_password(payload: ChangePasswordRequest, request: Request,
 
 
 @router.post("/deactivate", status_code=status.HTTP_204_NO_CONTENT)
-async def deactivate(payload: PasswordConfirmRequest, request: Request,
+def deactivate(payload: PasswordConfirmRequest, request: Request,
                      user: User = Depends(get_bearer_user), db: Session = Depends(get_db)):
-    await _confirm_password(db, request, user, payload.password)
+    _confirm_password(db, request, user, payload.password)
     user.is_active = False
     db.commit()
     revoke_all_for_user(db, user.id)
@@ -225,9 +227,10 @@ async def deactivate(payload: PasswordConfirmRequest, request: Request,
 
 
 @router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_account(payload: PasswordConfirmRequest, request: Request,
+def delete_account(payload: PasswordConfirmRequest, request: Request,
                          user: User = Depends(get_bearer_user), db: Session = Depends(get_db)):
-    await _confirm_password(db, request, user, payload.password)
+    _confirm_password(db, request, user, payload.password)
+    delete_user_files(db, user)
     db.delete(user)  # ORM cascade removes documents, cards, questions, attempts, flags and sessions
     db.commit()
     resp = Response(status_code=status.HTTP_204_NO_CONTENT)
