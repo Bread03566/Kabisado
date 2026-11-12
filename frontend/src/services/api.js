@@ -1,6 +1,6 @@
 // Kabisado API Client
 
-const API_BASE = "";
+const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
 
 export async function checkHealth() {
   const res = await fetch(`${API_BASE}/api/health`);
