@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.models.models import Document, Topic
+from app.identity import get_current_user, get_owned_document
+from app.models.models import Topic, User
 from app.schemas.schemas import SummaryGenerateRequest, SummaryResponse, KeyTermItem
 from app.services.ai_service import ai_service
 
@@ -13,18 +14,14 @@ router = APIRouter(prefix="/api/documents", tags=["summaries"])
 async def summarize_document(
     document_id: int,
     payload: SummaryGenerateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Generate or retrieve summary and key terms for a document or specific topic.
     Length can be 'brief', 'standard', or 'detailed'.
     """
-    doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="That document isn't here, friend!"
-        )
+    doc = get_owned_document(db, user, document_id, "That document isn't here, friend!")
 
     # If summarizing a specific topic
     if payload.topic_id:

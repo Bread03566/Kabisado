@@ -157,6 +157,7 @@ class Flag(Base):
     id = Column(Integer, primary_key=True, index=True)
     target_type = Column(String(20), nullable=False)  # "flashcard" or "question"
     target_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     reason = Column(String(100), nullable=False)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)

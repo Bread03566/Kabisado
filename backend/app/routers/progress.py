@@ -5,7 +5,9 @@ from sqlalchemy import func, case
 from typing import Optional
 
 from app.database import get_db
+from app.identity import get_current_user, get_owned_document
 from app.models.models import (
+    User,
     Document,
     Topic,
     Flashcard,
@@ -30,7 +32,8 @@ def as_utc(value: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
 def get_dashboard_stats(
     document_id: Optional[int] = None,
     tz_offset_minutes: int = Query(0, ge=-14 * 60, le=14 * 60, description="Browser's Date.getTimezoneOffset(), so streak days follow the student's local calendar"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Computes dashboard analytics:
@@ -45,9 +48,15 @@ def get_dashboard_stats(
     # getTimezoneOffset() is minutes *behind* UTC (Manila is -480), so subtract it
     local_delta = datetime.timedelta(minutes=-tz_offset_minutes)
 
-    # 1. Base queries
-    doc_filter = [QuizAttempt.document_id == document_id] if document_id else []
-    fc_filter = [Flashcard.document_id == document_id] if document_id else []
+    # 1. Base queries, limited to this browser's own documents
+    if document_id:
+        get_owned_document(db, user, document_id)
+    my_docs = db.query(Document.id).filter(Document.user_id == user.id).scalar_subquery()
+    doc_filter = [QuizAttempt.document_id.in_(my_docs)]
+    fc_filter = [Flashcard.document_id.in_(my_docs)]
+    if document_id:
+        doc_filter.append(QuizAttempt.document_id == document_id)
+        fc_filter.append(Flashcard.document_id == document_id)
 
     # 2. Cards Due Today
     cards_due_count = db.query(Flashcard).filter(*fc_filter, Flashcard.next_review <= now).count()
@@ -91,10 +100,16 @@ def get_dashboard_stats(
             Question.topic_id,
             func.count(QuestionAttempt.id),
             func.sum(case((QuestionAttempt.is_correct, 1), else_=0)),
-        ).join(QuestionAttempt, QuestionAttempt.question_id == Question.id).group_by(Question.topic_id).all()
+        ).join(QuestionAttempt, QuestionAttempt.question_id == Question.id)
+        .filter(Question.document_id.in_(my_docs))
+        .group_by(Question.topic_id).all()
     )
 
-    topic_query = db.query(Topic, Document.title).join(Document, Document.id == Topic.document_id)
+    topic_query = (
+        db.query(Topic, Document.title)
+        .join(Document, Document.id == Topic.document_id)
+        .filter(Document.user_id == user.id)
+    )
     if document_id:
         topic_query = topic_query.filter(Topic.document_id == document_id)
     topics = topic_query.order_by(Document.created_at.desc(), Topic.order_index).all()
@@ -137,8 +152,12 @@ def get_dashboard_stats(
         weak_topics_list += [t for t in topic_mastery_list if t["status"] == "untested"][: 3 - len(weak_topics_list)]
 
     # 5. Study Streak: any day with a quiz or a flashcard review, in the student's local calendar
-    activity_times = [row[0] for row in db.query(QuizAttempt.completed_at).all()]
-    activity_times += [row[0] for row in db.query(ReviewLog.reviewed_at).all()]
+    activity_times = [row[0] for row in db.query(QuizAttempt.completed_at).filter(QuizAttempt.document_id.in_(my_docs)).all()]
+    activity_times += [
+        row[0] for row in db.query(ReviewLog.reviewed_at)
+        .join(Flashcard, Flashcard.id == ReviewLog.flashcard_id)
+        .filter(Flashcard.document_id.in_(my_docs)).all()
+    ]
     active_dates = {(as_utc(t) + local_delta).date() for t in activity_times if t}
     streak = calculate_consecutive_days_streak(active_dates, today=(now + local_delta).date())
 

@@ -5,8 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database import engine, Base, init_db, SessionLocal
-from app.models.models import User
+from app.database import engine, Base, init_db
 from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat
 from app.services.ai_service import ai_service
 
@@ -19,17 +18,6 @@ init_db()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    # Ensure default user exists
-    db = SessionLocal()
-    try:
-        user = db.query(User).filter_by(username="iskolar").first()
-        if not user:
-            user = User(username="iskolar", email="iskolar@kabisado.ph")
-            db.add(user)
-            db.commit()
-    finally:
-        db.close()
-
     yield
 
 app = FastAPI(

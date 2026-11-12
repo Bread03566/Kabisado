@@ -2,21 +2,44 @@
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
 
+// Each browser gets a random ID, kept in localStorage, so the backend can keep its documents separate.
+const CLIENT_ID_KEY = "kabisado_client_id";
+let memoryClientId = null;
+
+function getClientId() {
+  try {
+    let id = localStorage.getItem(CLIENT_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(CLIENT_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    // Storage blocked (private mode): fall back to an ID that lasts until the tab closes
+    memoryClientId = memoryClientId || crypto.randomUUID();
+    return memoryClientId;
+  }
+}
+
+function apiFetch(url, options = {}) {
+  return fetch(url, { ...options, headers: { ...options.headers, "X-Client-Id": getClientId() } });
+}
+
 export async function checkHealth() {
-  const res = await fetch(`${API_BASE}/api/health`);
+  const res = await apiFetch(`${API_BASE}/api/health`);
   if (!res.ok) throw new Error("API unreachable");
   return res.json();
 }
 
 // ==================== Documents ====================
 export async function getDocuments() {
-  const res = await fetch(`${API_BASE}/api/documents`);
+  const res = await apiFetch(`${API_BASE}/api/documents`);
   if (!res.ok) throw new Error("Failed to fetch documents");
   return res.json();
 }
 
 export async function getDocument(id) {
-  const res = await fetch(`${API_BASE}/api/documents/${id}`);
+  const res = await apiFetch(`${API_BASE}/api/documents/${id}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Document not found");
@@ -31,7 +54,7 @@ export async function uploadDocumentFile(file, customTitle = "") {
     formData.append("custom_title", customTitle);
   }
 
-  const res = await fetch(`${API_BASE}/api/documents/upload`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/upload`, {
     method: "POST",
     body: formData,
   });
@@ -44,7 +67,7 @@ export async function uploadDocumentFile(file, customTitle = "") {
 }
 
 export async function createDocumentFromText(title, text) {
-  const res = await fetch(`${API_BASE}/api/documents/text`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/text`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, text }),
@@ -58,7 +81,7 @@ export async function createDocumentFromText(title, text) {
 }
 
 export async function deleteDocument(id) {
-  const res = await fetch(`${API_BASE}/api/documents/${id}`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete document");
@@ -67,7 +90,7 @@ export async function deleteDocument(id) {
 
 // ==================== Summaries ====================
 export async function summarizeDocument(id, length = "standard", topicId = null, force = false) {
-  const res = await fetch(`${API_BASE}/api/documents/${id}/summarize`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/${id}/summarize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ length, topic_id: topicId, force }),
@@ -83,13 +106,13 @@ export async function summarizeDocument(id, length = "standard", topicId = null,
 export async function getFlashcards(documentId, topicId = null) {
   let url = `${API_BASE}/api/documents/${documentId}/flashcards`;
   if (topicId) url += `?topic_id=${topicId}`;
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error("Failed to load flashcards");
   return res.json();
 }
 
 export async function generateFlashcards(documentId, count = 8, topicId = null, cardType = "mixed") {
-  const res = await fetch(`${API_BASE}/api/documents/${documentId}/flashcards/generate`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/${documentId}/flashcards/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ count, topic_id: topicId, card_type: cardType }),
@@ -102,7 +125,7 @@ export async function generateFlashcards(documentId, count = 8, topicId = null, 
 }
 
 export async function createFlashcard(cardData) {
-  const res = await fetch(`${API_BASE}/api/flashcards`, {
+  const res = await apiFetch(`${API_BASE}/api/flashcards`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cardData),
@@ -112,7 +135,7 @@ export async function createFlashcard(cardData) {
 }
 
 export async function updateFlashcard(cardId, updateData) {
-  const res = await fetch(`${API_BASE}/api/flashcards/${cardId}`, {
+  const res = await apiFetch(`${API_BASE}/api/flashcards/${cardId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updateData),
@@ -122,7 +145,7 @@ export async function updateFlashcard(cardId, updateData) {
 }
 
 export async function deleteFlashcard(cardId) {
-  const res = await fetch(`${API_BASE}/api/flashcards/${cardId}`, {
+  const res = await apiFetch(`${API_BASE}/api/flashcards/${cardId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete flashcard");
@@ -130,7 +153,7 @@ export async function deleteFlashcard(cardId) {
 }
 
 export async function reviewFlashcard(cardId, rating) {
-  const res = await fetch(`${API_BASE}/api/flashcards/${cardId}/review`, {
+  const res = await apiFetch(`${API_BASE}/api/flashcards/${cardId}/review`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rating }),
@@ -144,13 +167,13 @@ export async function getQuestions(documentId, topicId = null, difficulty = null
   let url = `${API_BASE}/api/documents/${documentId}/questions?`;
   if (topicId) url += `topic_id=${topicId}&`;
   if (difficulty && difficulty !== "mixed") url += `difficulty=${difficulty}&`;
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error("Failed to load questions");
   return res.json();
 }
 
 export async function generateQuiz(documentId, count = 5, topicId = null, difficulty = "medium", questionType = "multiple_choice", style = "mixed") {
-  const res = await fetch(`${API_BASE}/api/documents/${documentId}/quiz/generate`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/${documentId}/quiz/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ count, topic_id: topicId, difficulty, question_type: questionType, style }),
@@ -164,7 +187,7 @@ export async function generateQuiz(documentId, count = 5, topicId = null, diffic
 
 // Instant feedback for typed and matching answers, using the same grader as the final score
 export async function checkAnswer(questionId, answer) {
-  const res = await fetch(`${API_BASE}/api/quizzes/check`, {
+  const res = await apiFetch(`${API_BASE}/api/quizzes/check`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question_id: questionId, ...answer }),
@@ -174,7 +197,7 @@ export async function checkAnswer(questionId, answer) {
 }
 
 export async function submitQuizAttempt(documentId, answers, difficulty = "mixed", topicId = null) {
-  const res = await fetch(`${API_BASE}/api/quizzes/submit`, {
+  const res = await apiFetch(`${API_BASE}/api/quizzes/submit`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -193,7 +216,7 @@ export async function submitQuizAttempt(documentId, answers, difficulty = "mixed
 
 // ==================== Flags ====================
 export async function submitFlag(targetType, targetId, reason, notes = "") {
-  const res = await fetch(`${API_BASE}/api/flags`, {
+  const res = await apiFetch(`${API_BASE}/api/flags`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -212,7 +235,7 @@ export async function getDashboardStats(documentId = null) {
   // Lets the server count streak days by the student's own calendar, not UTC
   let url = `${API_BASE}/api/progress/dashboard?tz_offset_minutes=${new Date().getTimezoneOffset()}`;
   if (documentId) url += `&document_id=${documentId}`;
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error("Failed to fetch dashboard stats");
   return res.json();
 }
@@ -220,14 +243,14 @@ export async function getDashboardStats(documentId = null) {
 export async function getDueFlashcards(documentId = null) {
   let url = `${API_BASE}/api/flashcards/due`;
   if (documentId) url += `?document_id=${documentId}`;
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error("Failed to fetch due flashcards");
   return res.json();
 }
 
 // ==================== Explainer Chat ====================
 export async function askDocumentChat(documentId, question, explainLikeNew = false, conversationHistory = []) {
-  const res = await fetch(`${API_BASE}/api/documents/${documentId}/chat`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/${documentId}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -245,7 +268,7 @@ export async function askDocumentChat(documentId, question, explainLikeNew = fal
 
 // ==================== Weak-Spot Quiz ====================
 export async function generateWeakSpotQuiz(documentId) {
-  const res = await fetch(`${API_BASE}/api/documents/${documentId}/quiz/weak-spots`, {
+  const res = await apiFetch(`${API_BASE}/api/documents/${documentId}/quiz/weak-spots`, {
     method: "POST",
   });
   if (!res.ok) {

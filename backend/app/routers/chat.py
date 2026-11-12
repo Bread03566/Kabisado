@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 
 from app.database import get_db
-from app.models.models import Document, Topic
+from app.identity import get_current_user, get_owned_document
+from app.models.models import User
 from app.services.ai_service import ai_service
 
 router = APIRouter(prefix="/api/documents", tags=["chat"])
@@ -23,7 +24,8 @@ class ChatResponse(BaseModel):
 async def ask_kabisado(
     document_id: int,
     payload: ChatRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Ask Kabisado a question about an uploaded module.
@@ -32,12 +34,7 @@ async def ask_kabisado(
     - Declares when info is not in the material instead of guessing.
     - Supports 'explain like I'm new to this' toggle.
     """
-    doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found."
-        )
+    doc = get_owned_document(db, user, document_id)
 
     topics_data = [
         {"id": t.id, "title": t.title, "content": t.content}

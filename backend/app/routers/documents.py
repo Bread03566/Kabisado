@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.database import get_db
+from app.identity import get_current_user, get_owned_document
 from app.models.models import Document, Topic, Flashcard, Question, User
 from app.schemas.schemas import (
     DocumentListItem,
@@ -19,15 +20,6 @@ from app.services.segmenter_service import segmenter_service
 from app.config import settings
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
-
-def get_or_create_default_user(db: Session) -> User:
-    user = db.query(User).filter_by(username="iskolar").first()
-    if not user:
-        user = User(username="iskolar", email="iskolar@kabisado.ph")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    return user
 
 def safe_stem(filename: str) -> str:
     """Display title from an uploaded filename, without any directory parts."""
@@ -56,12 +48,12 @@ def save_document(db: Session, user: User, title: str, file_type: str, file_path
 async def upload_document(
     file: UploadFile = File(...),
     custom_title: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Upload a PDF or DOCX module, extract text, split into topics, and save.
     """
-    user = get_or_create_default_user(db)
     filename = file.filename or "uploaded_file"
     file_ext = filename.split(".")[-1].lower() if "." in filename else ""
 
@@ -107,17 +99,17 @@ async def upload_document(
 @router.post("/text", response_model=DocumentDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_document_from_text(
     payload: DocumentCreateText,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Create a document by directly pasting plain text.
     """
-    user = get_or_create_default_user(db)
     raw_text = parser_service.parse_plain_text(payload.text)
     return save_document(db, user, payload.title.strip(), "text", None, raw_text)
 
 @router.get("", response_model=List[DocumentListItem])
-def list_documents(db: Session = Depends(get_db)):
+def list_documents(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Get all uploaded documents with summary stats.
     """
@@ -128,7 +120,7 @@ def list_documents(db: Session = Depends(get_db)):
     flashcard_counts = counts_by_document(Flashcard)
     question_counts = counts_by_document(Question)
 
-    docs = db.query(Document).order_by(Document.created_at.desc()).all()
+    docs = db.query(Document).filter(Document.user_id == user.id).order_by(Document.created_at.desc()).all()
     return [
         DocumentListItem(
             id=d.id,
@@ -144,29 +136,21 @@ def list_documents(db: Session = Depends(get_db)):
     ]
 
 @router.get("/{document_id}", response_model=DocumentDetailResponse)
-def get_document(document_id: int, db: Session = Depends(get_db)):
+def get_document(document_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Get a specific document by ID with all its topics.
     """
-    doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="That document isn't here, friend! It may have been deleted, or the ID is wrong."
-        )
-    return doc
+    return get_owned_document(
+        db, user, document_id,
+        "That document isn't here, friend! It may have been deleted, or the ID is wrong."
+    )
 
 @router.delete("/{document_id}", response_model=MessageResponse)
-def delete_document(document_id: int, db: Session = Depends(get_db)):
+def delete_document(document_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Delete a document and all related topics, cards, questions, and attempts.
     """
-    doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Could not find the document to delete."
-        )
+    doc = get_owned_document(db, user, document_id, "Could not find the document to delete.")
 
     # Remove file on disk if exists
     if doc.file_path and os.path.exists(doc.file_path):

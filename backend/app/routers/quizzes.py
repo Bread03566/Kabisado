@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Optional
 import datetime
 
 from app.database import get_db
-from app.models.models import Document, Topic, Question, QuizAttempt, QuestionAttempt
+from app.identity import get_current_user, get_owned_document
+from app.models.models import Document, Topic, Question, QuizAttempt, QuestionAttempt, User
 from app.schemas.schemas import (
     QuizGenerateRequest,
     QuestionResponse,
@@ -40,13 +41,6 @@ def to_response(q: Question) -> QuestionResponse:
         answer_data=q.answer_data,
         created_at=q.created_at
     )
-
-
-def get_document_or_404(db: Session, document_id: int) -> Document:
-    doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
-    return doc
 
 
 async def create_questions(
@@ -145,13 +139,14 @@ async def create_questions(
 async def generate_quiz_questions(
     document_id: int,
     payload: QuizGenerateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Generate multiple-choice questions for a document or specific topic.
     The requested count is spread across topics, so asking for 5 questions gives about 5 questions.
     """
-    doc = get_document_or_404(db, document_id)
+    doc = get_owned_document(db, user, document_id)
     topics = topics_for_generation(db, doc, payload.topic_id)
     return await create_questions(
         db, doc, plan_counts(topics, payload.count), payload.difficulty or "medium", payload.question_type, payload.style
@@ -160,12 +155,13 @@ async def generate_quiz_questions(
 @router.post("/api/documents/{document_id}/quiz/weak-spots", response_model=List[QuestionResponse])
 async def generate_weak_spot_quiz(
     document_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Generates a targeted quiz from the student's lowest-mastery topics (Weak-Spot Quiz).
     """
-    doc = get_document_or_404(db, document_id)
+    doc = get_owned_document(db, user, document_id)
 
     topics = db.query(Topic).filter(Topic.document_id == doc.id).all()
     if not topics:
@@ -192,11 +188,13 @@ def get_document_questions(
     document_id: int,
     topic_id: Optional[int] = None,
     difficulty: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Get all questions for a document.
     """
+    get_owned_document(db, user, document_id)
     query = db.query(Question).filter(Question.document_id == document_id)
     if topic_id:
         query = query.filter(Question.topic_id == topic_id)
@@ -205,12 +203,17 @@ def get_document_questions(
     return [to_response(q) for q in query.order_by(Question.created_at.desc()).all()]
 
 @router.post("/api/quizzes/check", response_model=AnswerCheckResponse)
-def check_answer(payload: QuestionAttemptInput, db: Session = Depends(get_db)):
+def check_answer(payload: QuestionAttemptInput, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Checks one answer for instant feedback (typed and matching answers need the server's
     forgiving comparison). Uses the same grader as the final score.
     """
-    question = db.query(Question).filter(Question.id == payload.question_id).first()
+    question = (
+        db.query(Question)
+        .join(Document, Document.id == Question.document_id)
+        .filter(Question.id == payload.question_id, Document.user_id == user.id)
+        .first()
+    )
     if not question:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found.")
     return AnswerCheckResponse(
@@ -223,14 +226,15 @@ def check_answer(payload: QuestionAttemptInput, db: Session = Depends(get_db)):
 @router.post("/api/quizzes/submit", response_model=QuizResultResponse)
 def submit_quiz_attempt(
     payload: QuizSubmitRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """
     Submit quiz answers, record attempts, and return scored results with roast/praise.
     """
     if not payload.answers:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No answers were submitted!")
-    get_document_or_404(db, payload.document_id)
+    get_owned_document(db, user, payload.document_id)
 
     question_ids = [a.question_id for a in payload.answers]
     questions = {
@@ -246,7 +250,7 @@ def submit_quiz_attempt(
 
     now = datetime.datetime.now(datetime.timezone.utc)
     attempt = QuizAttempt(
-        user_id=1,
+        user_id=user.id,
         document_id=payload.document_id,
         topic_id=payload.topic_id,
         score=0,

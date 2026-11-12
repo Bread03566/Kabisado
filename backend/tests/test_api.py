@@ -2,9 +2,12 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
+ALICE = {"X-Client-Id": "alice-0123456789abcdef"}
+BOB = {"X-Client-Id": "bob-0123456789abcdef01"}
+
 @pytest.fixture(scope="module")
 def client():
-    with TestClient(app) as c:
+    with TestClient(app, headers=ALICE) as c:
         yield c
 
 def test_health_check(client):
@@ -235,7 +238,7 @@ def test_unexpected_errors_do_not_leak_details(monkeypatch):
         raise RuntimeError("internal secret path C:/server/db")
 
     monkeypatch.setattr(ai_module.ai_service, "answer_document_question", boom)
-    with TestClient(app, raise_server_exceptions=False) as c:
+    with TestClient(app, raise_server_exceptions=False, headers=ALICE) as c:
         doc = make_doc(c)
         res = c.post(f"/api/documents/{doc['id']}/chat", json={"question": "Who led the meetings?"})
     assert res.status_code == 500
@@ -299,3 +302,43 @@ def test_existing_databases_get_new_columns(tmp_path):
         database.engine = old_engine
     assert {"question_type", "style", "answer_data"} <= columns
     assert existing_type == "multiple_choice"
+
+
+def test_each_browser_only_sees_its_own_documents():
+    with TestClient(app, headers=ALICE) as alice, TestClient(app, headers=BOB) as bob:
+        doc = make_doc(alice, title="Alice private notes")
+        card = alice.post("/api/flashcards", json={"document_id": doc["id"], "front": "Q", "back": "A", "card_type": "term"})
+        assert card.status_code == 201
+        card_id = card.json()["id"]
+
+        assert doc["id"] in [d["id"] for d in alice.get("/api/documents").json()]
+        assert doc["id"] not in [d["id"] for d in bob.get("/api/documents").json()]
+
+        doc_id = doc["id"]
+        assert bob.get(f"/api/documents/{doc_id}").status_code == 404
+        assert bob.delete(f"/api/documents/{doc_id}").status_code == 404
+        assert bob.post(f"/api/documents/{doc_id}/chat", json={"question": "What is this?"}).status_code == 404
+        assert bob.post(f"/api/documents/{doc_id}/summarize", json={"length": "brief"}).status_code == 404
+        assert bob.get(f"/api/documents/{doc_id}/flashcards").status_code == 404
+        assert bob.get(f"/api/documents/{doc_id}/questions").status_code == 404
+        assert bob.post(f"/api/documents/{doc_id}/quiz/generate", json={"count": 2}).status_code == 404
+        assert bob.get(f"/api/flashcards/due?document_id={doc_id}").json() == []
+        assert bob.put(f"/api/flashcards/{card_id}", json={"front": "hacked"}).status_code == 404
+        assert bob.post(f"/api/flashcards/{card_id}/review", json={"rating": "good"}).status_code == 404
+        assert bob.delete(f"/api/flashcards/{card_id}").status_code == 404
+        assert bob.post("/api/flags", json={"target_type": "flashcard", "target_id": card_id, "reason": "wrong"}).status_code == 404
+        assert bob.get("/api/progress/dashboard").json()["total_cards"] == 0
+        assert bob.get(f"/api/progress/dashboard?document_id={doc_id}").status_code == 404
+
+        # Alice is unaffected by Bob's attempts
+        assert alice.get(f"/api/documents/{doc_id}").status_code == 200
+        assert alice.get("/api/progress/dashboard").json()["total_cards"] >= 1
+
+
+def test_requests_without_a_valid_client_id_are_rejected():
+    with TestClient(app) as anon:
+        assert anon.get("/api/documents").status_code == 400
+    with TestClient(app, headers={"X-Client-Id": "short"}) as bad:
+        assert bad.get("/api/documents").status_code == 400
+    with TestClient(app) as anon:
+        assert anon.get("/api/health").status_code == 200
