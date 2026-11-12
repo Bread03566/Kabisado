@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,6 +9,7 @@ from app.config import settings
 from app.database import ensure_schema
 from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat, auth, admin
 from app.services.ai_service import ai_service
+from app.web import install_web
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("kabisado")
@@ -59,14 +61,15 @@ def health_check():
         "tagline": "Study today, pass tomorrow."
     }
 
-@app.get("/")
-def root():
-    return {
-        "message": "Welcome to Kabisado API.",
-        "tagline": "Study today, pass tomorrow.",
-        "docs_url": "/docs",
-        "health": "/api/health"
-    }
+if not Path(settings.STATIC_DIR, "index.html").is_file():  # with a built frontend, "/" is the app
+    @app.get("/")
+    def root():
+        return {
+            "message": "Welcome to Kabisado API.",
+            "tagline": "Study today, pass tomorrow.",
+            "docs_url": "/docs",
+            "health": "/api/health"
+        }
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -79,3 +82,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             "message": "Take a deep breath. You can try again."
         }
     )
+
+
+# Must be last: its catch-all route would otherwise shadow routes registered after it.
+install_web(app, settings.STATIC_DIR)

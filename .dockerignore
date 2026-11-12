@@ -1,0 +1,13 @@
+.git
+.superpowers
+phase0
+docs
+**/node_modules
+**/__pycache__
+**/.venv
+frontend/dist
+backend/tests
+backend/uploads
+backend/.env
+**/.env*
+!backend/.env.example

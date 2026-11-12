@@ -1,12 +1,17 @@
 services:
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     env_file: .env
     environment:
       DATABASE_URL: sqlite:////data/kabisado.db
       UPLOAD_DIR: /data/uploads
+      AUTO_CREATE_SCHEMA: "true"   # local only: create tables from the models instead of running migrations
+      COOKIE_SECURE: "false"
+      JWT_SECRET: local-dev-secret-change-me-0123456789abcdef
     volumes:
       - kabisado-data:/data
 volumes:

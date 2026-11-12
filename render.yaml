@@ -1,12 +1,22 @@
 services:
   - type: web
-    name: kabisado-api
+    name: kabisado
     runtime: docker
-    rootDir: backend
-    plan: free               # free: data resets on redeploy/restart, server sleeps when idle
+    dockerfilePath: backend/Dockerfile   # built from the repo root: it also builds and bundles the frontend
+    plan: free                           # free: sleeps when idle; all data lives in Supabase, not on this disk
     healthCheckPath: /api/health
     envVars:
-      - key: GEMINI_API_KEY
-        sync: false          # you paste this in the Render dashboard
+      - key: DATABASE_URL
+        sync: false                      # Supabase session-pooler URL; paste it in the Render dashboard only
+      - key: JWT_SECRET
+        generateValue: true              # random, stays in Render; rotate via JWT_SECRET_PREVIOUS
+      - key: ALLOWED_ORIGINS
+        value: "https://REPLACE-WITH-YOUR-SERVICE.onrender.com"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: GEMINI_ENABLED
+        value: "false"                   # hard kill switch: no Gemini calls until the owner turns it on
       - key: DEBUG
         value: "false"
