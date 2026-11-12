@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Download, Loader2, X } from 'lucide-react';
 import PasswordField from './PasswordField';
 import authClient from '../services/authClient';
-import { changePassword, deactivateAccount, deleteAccount } from '../services/api';
+import { changePassword, deactivateAccount, deleteAccount, exportMyData } from '../services/api';
 
 /** Change password, deactivate, or delete the account. Each action re-asks for the current password. */
 export default function AccountModal({ user, onClose }) {
@@ -40,6 +40,19 @@ export default function AccountModal({ user, onClose }) {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+  const downloadData = async () => {
+    setExporting(true);
+    setError('');
+    try {
+      await exportMyData();
+    } catch (err) {
+      setError(err.message || 'Could not download your data. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const tabs = [['password', 'Change password'], ['deactivate', 'Deactivate'], ['delete', 'Delete account']];
 
   return (
@@ -53,7 +66,13 @@ export default function AccountModal({ user, onClose }) {
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 hover:bg-slate-100"><X className="w-5 h-5" /></button>
         </div>
 
-        <div role="tablist" className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+        <button type="button" onClick={downloadData} disabled={exporting}
+          className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          Download my data
+        </button>
+
+        <div role="tablist" className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
           {tabs.map(([key, text]) => (
             <button key={key} type="button" role="tab" aria-selected={action === key}
               onClick={() => { setAction(key); setError(''); setDone(''); }}

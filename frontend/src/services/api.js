@@ -283,6 +283,18 @@ export const deactivateAccount = (password) => accountCall("POST", "/api/auth/de
 
 export const deleteAccount = (password) => accountCall("DELETE", "/api/auth/account", { password });
 
+/** Downloads everything the signed-in student owns as a JSON file. */
+export async function exportMyData() {
+  const res = await authFetch(`${API_BASE}/api/auth/export`);
+  if (!res.ok) throw new Error("Could not download your data. Please try again.");
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "kabisado-my-data.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ==================== Admin (the server enforces the role; the UI only hides the tab) ====================
 async function adminJson(path, options) {
   const res = await authFetch(`${API_BASE}/api/admin${path}`, options);

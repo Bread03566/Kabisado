@@ -22,7 +22,7 @@ export default function PrivacyView({ onBack }) {
           <li>Your <strong>username</strong> and <strong>display name</strong>.</li>
           <li>A <strong>password hash</strong> and a <strong>recovery-code hash</strong>, not the password or code themselves. We cannot read them.</li>
           <li><strong>Session information</strong>: when you signed in and which browser (hashed), so you can be signed out of other devices.</li>
-          <li>Your <strong>study content</strong>: the modules you upload, summaries, flashcards, quizzes, scores and progress.</li>
+          <li>Your <strong>study content</strong>: the text of the modules you upload, summaries, flashcards, quizzes, scores and progress. The original PDF or Word file is <strong>not kept</strong>; it is thrown away once its text is read.</li>
         </ul>
         <p>We do not ask for an email address, phone number or Gmail account.</p>
       </Section>
@@ -48,7 +48,7 @@ export default function PrivacyView({ onBack }) {
       </Section>
 
       <Section title="Deleting your account">
-        <p>Open your account menu and enter your password to <strong>delete your account</strong>. Your account and all the study content attached to it are removed immediately. You can also <strong>deactivate</strong> it first, which stops anyone signing in. Deletion cannot be undone.</p>
+        <p>Open your account menu and enter your password to <strong>delete your account</strong>. Your account and all the study content attached to it are removed immediately. You can download everything first with <strong>Download my data</strong>. You can also <strong>deactivate</strong> it first, which stops anyone signing in. Deletion cannot be undone.</p>
       </Section>
     </div>
   );

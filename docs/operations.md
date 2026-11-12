@@ -118,3 +118,22 @@ The API refuses to start if the database is not at the revision it expects. Rele
 1. Push the code, so the build is ready.
 2. Run `alembic upgrade head` against production (same Docker image and command as the first deploy).
 3. Trigger the deploy immediately and wait for **Live**.
+
+## Backups and keep-alive (one-time setup, then automatic)
+
+Free Supabase has **no managed backups**. The workflow `.github/workflows/backup.yml` runs nightly (03:17 Philippine time), also touches the database so Supabase does not pause an idle project, and uploads an **encrypted** dump (30 days kept) as a workflow artifact. Up to about 24 hours of data can be lost in a failure.
+
+One-time setup (you do this; the private key must never be given to anyone or committed):
+
+1. Generate a key pair on your computer: `docker run --rm -v "$PWD:/k" -w /k alpine sh -c "apk add -q age && age-keygen -o age-key.txt"` and read the line starting `# public key:`. Store `age-key.txt` (the private key) in your password manager, then delete the file. Without it the backups cannot be opened.
+2. In GitHub: Settings → Secrets and variables → Actions → New repository secret:
+   - `AGE_PUBLIC_KEY` = the `age1...` public key line.
+   - `BACKUP_DATABASE_URL` = the Supabase **session pooler** URL (the same kind as `DATABASE_URL`).
+3. Actions → "Nightly database backup" → Run workflow. It should finish green with a `kabisado-backup` artifact.
+4. **Test a restore once**, or you do not have a backup: download the artifact, then `age -d -i age-key.txt kabisado-*.dump.age > restore.dump` and `pg_restore --no-owner -d <an empty scratch database URL> restore.dump`.
+
+GitHub disables scheduled workflows on a repository with no activity for about 60 days. Push any commit now and then, or check the Actions tab monthly. This is best effort, not a guarantee.
+
+## What is stored from uploads
+
+The original PDF/DOCX is **discarded** right after its text is extracted (Render's disk is wiped on every restart, so keeping it would be unreliable and would store more of a student's data than needed). Only the extracted text is kept. Limits: 10 MB per upload, 400,000 characters per module, 25 modules and about 5 MB of text per student, and new modules are refused when the whole database text passes 90% of a 300 MB budget (`GLOBAL_TEXT_QUOTA_MB`). Students can download all their data from the account menu ("Download my data").

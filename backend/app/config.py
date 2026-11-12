@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./kabisado.db"
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_MB: int = 10
+    MAX_TEXT_CHARS: int = 400_000          # extracted text per module
+    DOCX_MAX_UNCOMPRESSED_MB: int = 50     # zip-bomb guard
+    MAX_DOCS_PER_USER: int = 25
+    STUDENT_TEXT_QUOTA_KB: int = 5000      # total extracted text per student
+    GLOBAL_TEXT_QUOTA_MB: int = 300        # whole-database text budget; new content is refused above 90%
     DB_POOL_SIZE: int = 3
     DB_MAX_OVERFLOW: int = 2
     DB_CONNECT_TIMEOUT: int = 10  # seconds to wait for Postgres before failing, instead of hanging

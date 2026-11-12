@@ -1,0 +1,60 @@
+name: Nightly database backup
+
+# Free-tier Supabase has no managed backups, so this is the only recovery path (see docs/operations.md).
+# The dump is encrypted with `age` BEFORE it leaves the runner, so the artifact is useless without the
+# owner's private key. Running a trivial query also counts as activity, which stops Supabase pausing the project.
+
+on:
+  schedule:
+    - cron: "17 19 * * *"   # 03:17 Philippine time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check secrets are set
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          AGE_PUBLIC_KEY: ${{ secrets.AGE_PUBLIC_KEY }}
+        run: |
+          [ -n "$BACKUP_DATABASE_URL" ] || { echo "::error::Repository secret BACKUP_DATABASE_URL is not set"; exit 1; }
+          [ -n "$AGE_PUBLIC_KEY" ] || { echo "::error::Repository secret AGE_PUBLIC_KEY is not set"; exit 1; }
+
+      - name: Install PostgreSQL 17 client and age
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17 age
+
+      - name: Keep-alive query
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: /usr/lib/postgresql/17/bin/psql "$BACKUP_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "select 'database reachable'"
+
+      - name: Dump and encrypt
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          AGE_PUBLIC_KEY: ${{ secrets.AGE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          /usr/lib/postgresql/17/bin/pg_dump "$BACKUP_DATABASE_URL" --format=custom --no-owner --no-privileges --schema=public \
+            | age -r "$AGE_PUBLIC_KEY" -o "kabisado-$stamp.dump.age"
+          size=$(stat -c %s "kabisado-$stamp.dump.age")
+          echo "Encrypted dump: $size bytes"
+          [ "$size" -gt 1000 ] || { echo "::error::Dump is suspiciously small"; exit 1; }
+
+      - name: Upload encrypted dump
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabisado-backup
+          path: kabisado-*.dump.age
+          retention-days: 30
+          if-no-files-found: error

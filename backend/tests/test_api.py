@@ -153,20 +153,6 @@ def docx_bytes(text: str) -> bytes:
     return buf.getvalue()
 
 
-def test_upload_never_uses_client_filename_as_path(client):
-    import os
-    from app.config import settings
-
-    res = client.post(
-        "/api/documents/upload",
-        files={"file": ("../../escape.docx", docx_bytes(HISTORY_TEXT), "application/octet-stream")},
-    )
-    assert res.status_code == 201
-    assert res.json()["title"] == "escape"
-    saved = os.listdir(settings.UPLOAD_DIR)
-    assert saved and all(name.endswith(".docx") and "escape" not in name for name in saved)
-
-
 def test_upload_rejects_files_over_the_size_limit(client, monkeypatch):
     from app.config import settings
     monkeypatch.setattr(settings, "MAX_UPLOAD_MB", 0)

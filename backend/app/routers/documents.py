@@ -17,6 +17,7 @@ from app.schemas.schemas import (
 )
 from app.services.parser_service import parser_service
 from app.services.segmenter_service import segmenter_service
+from app.services.limits import check_file_content, check_quota, check_text_length
 from app.config import settings
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -26,9 +27,11 @@ def safe_stem(filename: str) -> str:
     stem = Path(filename.replace("\\", "/")).name.rsplit(".", 1)[0].strip()
     return stem[:255] or "Uploaded module"
 
-def save_document(db: Session, user: User, title: str, file_type: str, file_path: Optional[str], raw_text: str) -> Document:
+def save_document(db: Session, user: User, title: str, file_type: str, raw_text: str) -> Document:
     """Stores a document and its topics in one transaction, so a failure leaves nothing half-saved."""
-    doc = Document(user_id=user.id, title=title, file_type=file_type, file_path=file_path, raw_text=raw_text)
+    check_text_length(raw_text)
+    check_quota(db, user, len(raw_text))
+    doc = Document(user_id=user.id, title=title, file_type=file_type, file_path=None, raw_text=raw_text)
     db.add(doc)
     for topic_dict in segmenter_service.segment_text(raw_text, document_title=title):
         doc.topics.append(Topic(
@@ -77,7 +80,9 @@ async def upload_document(
             detail="Hmm, why is the file empty? This is a blank file."
         )
 
-    # Extract text first, so unreadable files are rejected before anything is stored
+    check_file_content(file_ext, contents)
+
+    # Extract the text; the original file is then discarded, only the text is kept
     if file_ext == "pdf":
         raw_text = parser_service.parse_pdf(contents, filename)
     else:
@@ -85,16 +90,7 @@ async def upload_document(
 
     title = custom_title.strip() if custom_title and custom_title.strip() else safe_stem(filename)
 
-    # Save physical file under a generated name; the client's filename never becomes part of a path
-    file_path = os.path.join(settings.UPLOAD_DIR, f"{uuid.uuid4().hex}.{file_ext}")
-    with open(file_path, "wb") as f:
-        f.write(contents)
-
-    try:
-        return save_document(db, user, title, file_ext, file_path, raw_text)
-    except Exception:
-        os.remove(file_path)
-        raise
+    return save_document(db, user, title, file_ext, raw_text)
 
 @router.post("/text", response_model=DocumentDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_document_from_text(
@@ -106,7 +102,7 @@ async def create_document_from_text(
     Create a document by directly pasting plain text.
     """
     raw_text = parser_service.parse_plain_text(payload.text)
-    return save_document(db, user, payload.title.strip(), "text", None, raw_text)
+    return save_document(db, user, payload.title.strip(), "text", raw_text)
 
 @router.get("", response_model=List[DocumentListItem])
 def list_documents(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
