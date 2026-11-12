@@ -6,6 +6,7 @@ from app.database import get_db
 from app.identity import require_admin
 from app.models.models import AuditLog, Document, Flashcard, QuizAttempt, Question, User
 from app.security.sessions import revoke_all_for_user
+from app.services import system_status
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -34,6 +35,11 @@ def overview(_: User = Depends(require_admin), db: Session = Depends(get_db)):
         "quiz_attempts": count(QuizAttempt),
         "gemini_consents": count(User, User.role == "student", User.gemini_consent.is_(True)),
     }
+
+
+@router.get("/system")
+def system(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return system_status.system_report(db)
 
 
 @router.get("/students")

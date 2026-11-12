@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ShieldCheck, Search, UserX, UserCheck } from 'lucide-react';
-import { getAdminAudit, getAdminOverview, getAdminStudents, setStudentActive } from '../services/api';
+import { getAdminAudit, getAdminOverview, getAdminStudents, getAdminSystem, setStudentActive } from '../services/api';
 
 const STATS = [
   ['students', 'Students'],
@@ -15,18 +15,54 @@ const STATS = [
 // The API sends UTC timestamps without a zone suffix.
 const fmt = (iso) => (iso ? new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`).toLocaleString() : 'Never');
 
+function Meter({ label, used, limit, unit }) {
+  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const tone = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
+  return (
+    <div>
+      <div className="flex justify-between text-xs font-semibold text-slate-600">
+        <span>{label}</span>
+        <span>{used} / {limit} {unit} ({pct}%)</span>
+      </div>
+      <div className="mt-1 h-2 rounded-full bg-slate-100" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+        <div className={`h-2 rounded-full ${tone}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function SystemPanel({ system }) {
+  const { database, text_storage: text, ai, backup } = system;
+  return (
+    <section aria-label="System" className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
+      <h2 className="text-sm font-extrabold text-slate-900">System</h2>
+      {backup.warning && (
+        <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{backup.message}</p>
+      )}
+      {!backup.warning && <p className="text-xs text-slate-500">{backup.message}</p>}
+      {database.size_mb !== null && <Meter label="Database size" used={database.size_mb} limit={database.limit_mb} unit="MB" />}
+      <Meter label="Study text stored" used={text.used_mb} limit={text.budget_mb} unit="MB" />
+      <p className="text-xs text-slate-600">
+        Gemini AI: <strong>{ai.enabled ? 'on' : 'off'}</strong> · {ai.calls_today} / {ai.global_daily_limit} requests today · {ai.consenting_students} student(s) opted in
+      </p>
+    </section>
+  );
+}
+
 export default function AdminView({ showToast }) {
   const [overview, setOverview] = useState(null);
   const [students, setStudents] = useState([]);
   const [audit, setAudit] = useState([]);
+  const [system, setSystem] = useState(null);
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async (q) => {
     try {
-      const [o, s, a] = await Promise.all([getAdminOverview(), getAdminStudents(q), getAdminAudit()]);
+      const [o, s, a, sys] = await Promise.all([getAdminOverview(), getAdminStudents(q), getAdminAudit(), getAdminSystem()]);
       setOverview(o);
+      setSystem(sys);
       setStudents(s.students);
       setAudit(a.entries);
       setError('');
@@ -72,6 +108,8 @@ export default function AdminView({ showToast }) {
           </div>
         ))}
       </section>
+
+      {system && <SystemPanel system={system} />}
 
       <section aria-label="Students" className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-1">

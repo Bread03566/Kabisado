@@ -327,5 +327,6 @@ async function adminJson(path, options) {
 export const getAdminOverview = () => adminJson("/overview");
 export const getAdminStudents = (q = "") => adminJson(`/students?q=${encodeURIComponent(q)}`);
 export const getAdminAudit = () => adminJson("/audit");
+export const getAdminSystem = () => adminJson("/system");
 export const setStudentActive = (publicId, active) =>
   adminJson(`/students/${encodeURIComponent(publicId)}/${active ? "reactivate" : "deactivate"}`, { method: "POST" });

@@ -244,3 +244,12 @@ class AiUsage(Base):
     feature = Column(String(20), nullable=False)
     engine = Column(String(10), nullable=False)
     created_at = Column(DateTime, nullable=False, default=utc_now, index=True)
+
+
+class SystemStatus(Base):
+    """Tiny key/value table for operational heartbeats (for example the last successful backup)."""
+    __tablename__ = "system_status"
+
+    key = Column(String(40), primary_key=True)
+    value = Column(String(100), nullable=False, default="")
+    updated_at = Column(DateTime, nullable=False, default=utc_now)

@@ -58,3 +58,10 @@ jobs:
           path: kabisado-*.dump.age
           retention-days: 30
           if-no-files-found: error
+
+      - name: Record backup heartbeat (shown on the admin dashboard)
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          /usr/lib/postgresql/17/bin/psql "$BACKUP_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+            "insert into system_status (key, value, updated_at) values ('last_backup', 'ok', (now() at time zone 'utc')) on conflict (key) do update set value = excluded.value, updated_at = excluded.updated_at"
