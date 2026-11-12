@@ -1,8 +1,12 @@
-name: Deploy frontend to GitHub Pages
+name: Publish wake-up page to GitHub Pages
+
+# The app itself is served by the API (same origin, so the login cookie is first-party).
+# GitHub Pages only hosts a tiny static page that wakes the free Render instance and then redirects to it.
 
 on:
   push:
     branches: [main]
+    paths: [wake/**, .github/workflows/deploy.yml]
   workflow_dispatch:
 
 permissions:
@@ -17,26 +21,27 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run build
+      - name: Insert the API origin
         env:
-          VITE_BASE: /Kabisado/
-          # Set this repo variable (Settings > Variables > Actions) to your hosted backend URL
-          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
-      - run: cp dist/index.html dist/404.html
+          # Settings > Secrets and variables > Actions > Variables: e.g. https://kabisado.onrender.com
+          API_ORIGIN: ${{ vars.VITE_API_BASE }}
+        run: |
+          API_ORIGIN="${API_ORIGIN%/}"
+          case "$API_ORIGIN" in
+            https://*) ;;
+            *) echo "Repository variable VITE_API_BASE must be the API's https:// origin"; exit 1 ;;
+          esac
+          case "$API_ORIGIN" in
+            *[\|\&\\\"\'\<\>\ ]*) echo "VITE_API_BASE contains characters that are not allowed"; exit 1 ;;
+          esac
+          sed -i "s|__API_ORIGIN__|${API_ORIGIN}|g" wake/index.html
+          if grep -q "__API_ORIGIN__" wake/index.html; then echo "placeholder left behind"; exit 1; fi
+          cp wake/index.html wake/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend/dist
+          path: wake
 
   deploy:
     needs: build
