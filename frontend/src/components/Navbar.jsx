@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, Layers, BarChart3, LogOut, UserRound, ShieldCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from './AuthGate';
 import AccountModal from './AccountModal';
@@ -7,6 +7,34 @@ import Mascot from './Mascot';
 export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
   const { user, logout } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
+  const navRef = useRef(null);
+
+  // On a phone the tab row scrolls sideways: keep the current tab in view.
+  useEffect(() => {
+    navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [activeTab]);
+
+  const accountControls = (
+    <>
+      <button
+        onClick={() => setAccountOpen(true)}
+        className="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 max-w-[130px]"
+        title="Account"
+      >
+        <UserRound className="w-4 h-4 shrink-0" />
+        <span className="truncate" translate="no">{user?.display_name}</span>
+      </button>
+      <button
+        onClick={logout}
+        className="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1.5"
+        title="Log out"
+        aria-label="Log out"
+      >
+        <LogOut className="w-4 h-4" />
+        <span className="hidden sm:inline">Logout</span>
+      </button>
+    </>
+  );
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
@@ -32,11 +60,14 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
           </div>
         </div>
 
+        <div className="md:hidden flex items-center gap-1 shrink-0">{accountControls}</div>
+
         {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto overflow-x-auto pb-0.5">
+        <nav ref={navRef} className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto overflow-x-auto pb-0.5">
           <button
             onClick={() => onSelectTab('library')}
-            className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 ${
+            aria-current={activeTab === 'library' ? 'page' : undefined}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === 'library'
                 ? 'bg-amber-500 text-white shadow-sm shadow-amber-200'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -48,7 +79,8 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
 
           <button
             onClick={() => onSelectTab('dashboard')}
-            className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 ${
+            aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === 'dashboard'
                 ? 'bg-amber-500 text-white shadow-sm shadow-amber-200'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -61,7 +93,8 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
 
           <button
             onClick={() => onSelectTab('exam')}
-            className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 ${
+            aria-current={activeTab === 'exam' ? 'page' : undefined}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === 'exam'
                 ? 'bg-amber-500 text-white shadow-sm shadow-amber-200'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -74,7 +107,8 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
           {user?.role === 'admin' && (
             <button
               onClick={() => onSelectTab('admin')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 ${
+              aria-current={activeTab === 'admin' ? 'page' : undefined}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                 activeTab === 'admin'
                   ? 'bg-amber-500 text-white shadow-sm shadow-amber-200'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -88,7 +122,8 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
           {currentDoc && (
             <button
               onClick={() => onSelectTab('document')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 max-w-[140px] sm:max-w-[200px] truncate ${
+              aria-current={['document', 'flashcards', 'quiz'].includes(activeTab) ? 'page' : undefined}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 shrink-0 whitespace-nowrap max-w-[140px] sm:max-w-[200px] truncate ${
                 activeTab === 'document' || activeTab === 'flashcards' || activeTab === 'quiz'
                   ? 'bg-amber-500 text-white shadow-sm shadow-amber-200'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -100,24 +135,7 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
             </button>
           )}
 
-          <div className="ml-auto md:ml-2 flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => setAccountOpen(true)}
-              className="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 max-w-[130px]"
-              title="Account"
-            >
-              <UserRound className="w-4 h-4 shrink-0" />
-              <span className="truncate" translate="no">{user?.display_name}</span>
-            </button>
-            <button
-              onClick={logout}
-              className="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1.5"
-              title="Log out"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          </div>
+          <div className="hidden md:flex ml-2 items-center gap-1 shrink-0">{accountControls}</div>
         </nav>
       </div>
 

@@ -37,7 +37,7 @@ export default function RecoveryCodeScreen({ code, username, onContinue, isReset
       </p>
 
       <div
-        className="select-all rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-4 text-center font-mono text-base sm:text-lg font-bold tracking-wider text-amber-900 break-all"
+        className="select-all rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-4 text-center font-mono text-sm sm:text-base font-bold tracking-normal text-amber-900 break-all"
         data-testid="recovery-code"
       >
         {code}

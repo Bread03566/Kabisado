@@ -18,10 +18,10 @@ function PlanDays({ plan }) {
             <h3 className="text-sm font-extrabold text-slate-900">
               Day {d.day}{d.final_review ? ' · Final review & practice exam' : ''}
             </h3>
-            <span className="text-xs text-slate-500">about {d.minutes} min</span>
+            {d.minutes > 0 && <span className="text-xs text-slate-500">about {d.minutes} min</span>}
           </div>
           {d.topics.length === 0 ? (
-            <p className="mt-2 text-xs text-slate-500">Light day. Rest, or redo flashcards you missed.</p>
+            <p className="mt-2 text-xs text-slate-500">Flexible day. Redo flashcards you missed, retake a practice exam, or rest.</p>
           ) : (
             <ul className="mt-2 space-y-1.5">
               {d.topics.map((t) => (
