@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import ensure_schema
-from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat, auth
+from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat, auth, admin
 from app.services.ai_service import ai_service
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -44,6 +44,7 @@ app.include_router(flags.router)
 app.include_router(progress.router)
 app.include_router(chat.router)
 app.include_router(auth.router)
+app.include_router(admin.router)
 
 
 @app.get("/api/health")
