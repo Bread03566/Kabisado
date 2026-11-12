@@ -204,3 +204,15 @@ class Flag(Base):
     reason = Column(String(100), nullable=False)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
+
+
+class AuditLog(Base):
+    """Append-only record of admin write actions. Holds who did what to whom, never any secrets or content."""
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    actor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    actor_username = Column(String(100), nullable=False)  # kept so the entry still reads after the actor is deleted
+    action = Column(String(40), nullable=False)
+    target_ref = Column(String(36), nullable=False)       # the student's public_id
+    created_at = Column(DateTime, default=utc_now, index=True)
