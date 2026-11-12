@@ -30,10 +30,10 @@ app = FastAPI(
 # CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.allowed_origins,
+    allow_credentials=False,  # auth uses the Authorization header, so no ambient credentials
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Kabisado-Request", "X-Client-Id"],
 )
 
 # Include routers
