@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, Loader2, X } from 'lucide-react';
 import PasswordField from './PasswordField';
 import ConsentPanel from './ConsentPanel';
@@ -56,7 +57,9 @@ export default function AccountModal({ user, onClose }) {
 
   const tabs = [['password', 'Change password'], ['deactivate', 'Deactivate'], ['delete', 'Delete account']];
 
-  return (
+  // Rendered into <body>: the navbar has a backdrop blur, which would otherwise become the reference frame
+  // for "fixed" and squash this window into the 64px-high header instead of centring it on the screen.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-label="Account">
       <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
@@ -104,6 +107,7 @@ export default function AccountModal({ user, onClose }) {
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
