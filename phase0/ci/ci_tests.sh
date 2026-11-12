@@ -15,9 +15,9 @@ psqlc() { docker run --rm -e PGPASSWORD="$SUPABASE_DB_PASSWORD" -e PGSSLMODE=req
 say "## Phase 0 CI results"
 say "| Test | Result | Detail |"; say "|---|---|---|"
 
-IMG=postgres:17
-t=$(now); VER=$(psqlc -c "show server_version_num" 2>&1); rc=$?
-if [ $rc -ne 0 ]; then res "pooler connect from runner (IPv4)" FAIL "$(echo "$VER" | head -c 200)"; exit 1; fi
+IMG=postgres:17; docker pull -q "$IMG" >/dev/null 2>&1
+t=$(now); VER=$(psqlc -c "show server_version_num" 2>&1 | tail -1)
+if ! [[ "$VER" =~ ^[0-9]+$ ]]; then res "pooler connect from runner (IPv4)" FAIL "$(echo "$VER" | head -c 200)"; exit 1; fi
 MAJOR=$((VER / 10000)); IMG=postgres:$MAJOR
 res "pooler connect from runner (session mode :$PORT)" PASS "server major $MAJOR, $(ms $t) ms incl. docker pull"
 
