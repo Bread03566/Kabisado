@@ -28,7 +28,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if user:
         return user
 
-    user = User(username=username)
+    user = User(username=username, display_name=username[:60])  # temporary: removed with client-id auth in Task 10
     db.add(user)
     try:
         db.commit()

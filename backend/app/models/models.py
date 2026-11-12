@@ -1,28 +1,71 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON
+import secrets
+import uuid
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, CheckConstraint, true
 from sqlalchemy.orm import relationship
 from app.database import Base
 
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc)
 
+def new_public_id() -> str:
+    return str(uuid.uuid4())
+
+def new_subject_ref() -> str:
+    return secrets.token_hex(16)
+
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (CheckConstraint("role IN ('student', 'admin')", name="ck_users_role"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(100), unique=True, index=True, default="iskolar")
-    email = Column(String(255), nullable=True)
+    public_id = Column(String(36), unique=True, index=True, nullable=False, default=new_public_id)
+    username = Column(String(100), unique=True, index=True, nullable=False)  # lower-case by application rule
+    display_name = Column(String(60), nullable=False)
+    password_hash = Column(Text, nullable=True)   # NULL for legacy client-id rows: they cannot log in
+    recovery_hash = Column(Text, nullable=True)
+    role = Column(String(10), nullable=False, default="student", server_default="student")
+    is_active = Column(Boolean, nullable=False, default=True, server_default=true())
+    last_login_at = Column(DateTime, nullable=True)
+    # Random pseudonymous reference for the later consent/audit logs; never derived from the user id.
+    subject_ref = Column(String(32), unique=True, nullable=False, default=new_subject_ref)
     created_at = Column(DateTime, default=utc_now)
 
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
     quiz_attempts = relationship("QuizAttempt", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship("UserSession", cascade="all, delete-orphan", passive_deletes=True)
+
+
+class UserSession(Base):
+    """One refresh-token generation. Rotation creates a successor in the same family."""
+    __tablename__ = "sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    family_id = Column(String(36), nullable=False, index=True)
+    refresh_hash = Column(String(64), unique=True, nullable=False)  # sha256 of the token; plaintext never stored
+    created_at = Column(DateTime, default=utc_now)
+    expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+    replaced_by = Column(Integer, nullable=True)
+    rotated_at = Column(DateTime, nullable=True)
+    user_agent_hash = Column(String(64), nullable=True)
+
+
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+
+    key = Column(String(64), primary_key=True)  # sha256(username|ip)
+    count = Column(Integer, nullable=False, default=0)
+    window_start = Column(DateTime, default=utc_now)
+    locked_until = Column(DateTime, nullable=True)
 
 
 class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=1)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     title = Column(String(255), nullable=False)
     file_type = Column(String(20), nullable=False)  # "pdf", "docx", "text"
     file_path = Column(String(500), nullable=True)
