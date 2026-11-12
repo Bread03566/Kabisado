@@ -8,12 +8,15 @@ import FlashcardStudyMode from './views/FlashcardStudyMode';
 import QuizMode from './views/QuizMode';
 import ProgressView from './views/ProgressView';
 import ChatView from './views/ChatView';
+import AdminView from './views/AdminView';
+import { useAuth } from './components/AuthGate';
 import { CloudOff, X } from 'lucide-react';
 import { getDocuments, checkHealth } from './services/api';
 import { usePetEmoji } from './components/pets';
 
 export default function App() {
   const petEmoji = usePetEmoji();
+  const { user } = useAuth();
 
   // The browser tab icon shows the chosen study buddy
   useEffect(() => {
@@ -107,6 +110,8 @@ export default function App() {
             setActiveView('library');
           } else if (tab === 'dashboard') {
             setActiveView('dashboard');
+          } else if (tab === 'admin' && user?.role === 'admin') {
+            setActiveView('admin');
           } else if (tab === 'document' && currentDoc) {
             setActiveView('document');
           }
@@ -152,6 +157,8 @@ export default function App() {
             showToast={showToast}
           />
         )}
+
+        {activeView === 'admin' && user?.role === 'admin' && <AdminView showToast={showToast} />}
 
         {activeView === 'document' && currentDoc && (
           <DocumentView

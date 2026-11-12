@@ -104,3 +104,17 @@ By hand (a script cannot do these):
 | Wake-up page gives up after 90 s | Pages origin missing from `ALLOWED_ORIGINS`, or the API is failing to boot: open the Render logs. |
 | "Too many attempts" | Throttling after repeated failures (per username and IP). It clears on its own within 15 minutes at most. |
 | Frontend build fails on Render with a missing `lightningcss` binary | Retry the deploy; if it repeats, add `lightningcss-linux-x64-gnu` as an explicit dependency. |
+
+## Admin dashboard (v1)
+
+Sign in with an admin account and an **Admin** tab appears. It shows account and content counts, a searchable student list (account details only, never study content), **Deactivate / Reactivate** buttons, and an audit log of every change. Admins cannot be deactivated from here, and nobody can deactivate their own account here. Deactivating signs the student out everywhere immediately.
+
+Not in v1 (later phases): free-tier usage and backup-age warnings, reported items, settings. The Gemini switch stays an environment variable only.
+
+### Releasing a version that adds a migration
+
+The API refuses to start if the database is not at the revision it expects. Release in this order, and do it in one sitting, because an old instance that restarts after the migration (the free instance sleeps and wakes) will refuse to start until the new version is deployed:
+
+1. Push the code, so the build is ready.
+2. Run `alembic upgrade head` against production (same Docker image and command as the first deploy).
+3. Trigger the deploy immediately and wait for **Live**.

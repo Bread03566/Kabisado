@@ -282,3 +282,19 @@ export const changePassword = (currentPassword, newPassword, confirmPassword) =>
 export const deactivateAccount = (password) => accountCall("POST", "/api/auth/deactivate", { password });
 
 export const deleteAccount = (password) => accountCall("DELETE", "/api/auth/account", { password });
+
+// ==================== Admin (the server enforces the role; the UI only hides the tab) ====================
+async function adminJson(path, options) {
+  const res = await authFetch(`${API_BASE}/api/admin${path}`, options);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Admin request failed");
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+export const getAdminOverview = () => adminJson("/overview");
+export const getAdminStudents = (q = "") => adminJson(`/students?q=${encodeURIComponent(q)}`);
+export const getAdminAudit = () => adminJson("/audit");
+export const setStudentActive = (publicId, active) =>
+  adminJson(`/students/${encodeURIComponent(publicId)}/${active ? "reactivate" : "deactivate"}`, { method: "POST" });

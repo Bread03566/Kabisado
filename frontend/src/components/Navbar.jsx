@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Layers, BarChart3, LogOut, UserRound } from 'lucide-react';
+import { BookOpen, Layers, BarChart3, LogOut, UserRound, ShieldCheck } from 'lucide-react';
 import { useAuth } from './AuthGate';
 import AccountModal from './AccountModal';
 import Mascot from './Mascot';
@@ -58,6 +58,20 @@ export default function Navbar({ activeTab, onSelectTab, currentDoc }) {
             <span>Dashboard</span>
           </button>
 
+
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => onSelectTab('admin')}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 ${
+                activeTab === 'admin'
+                  ? 'bg-amber-500 text-white shadow-sm shadow-amber-200'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Admin</span>
+            </button>
+          )}
 
           {currentDoc && (
             <button
