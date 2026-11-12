@@ -1,0 +1,43 @@
+name: Phase 0 spike (temporary, branch phase0-spike only)
+
+on:
+  push:
+    branches: [phase0-spike]
+    paths: ["phase0/ci/**", ".github/workflows/phase0.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_HOST: ${{ secrets.SUPABASE_DB_HOST }}
+      SUPABASE_DB_PORT: ${{ secrets.SUPABASE_DB_PORT }}
+      SUPABASE_DB_USER: ${{ secrets.SUPABASE_DB_USER }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip cleanly if secrets are not set
+        id: gate
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+            echo "## Phase 0 CI skipped: Supabase secrets are not set in this repo." >> "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Phase 0 tests
+        if: steps.gate.outputs.run == 'true'
+        run: bash phase0/ci/ci_tests.sh
+      - name: Upload 40 MB encrypted file as artifact (size/retention test)
+        if: steps.gate.outputs.run == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-artifact-test
+          path: big.bin.age
+          retention-days: 1
+          if-no-files-found: warn
