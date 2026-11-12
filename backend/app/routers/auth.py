@@ -12,7 +12,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.models import User
 from app.schemas.auth import (
-    LoginRequest, RecoverRequest, RecoveryTokenResponse, RegisterRequest, TokenResponse, UserOut,
+    ChangePasswordRequest, LoginRequest, PasswordConfirmRequest, RecoverRequest, RecoveryTokenResponse, RegisterRequest, TokenResponse, UserOut,
 )
 from app.security import throttle
 from app.security.bearer import get_bearer_user
@@ -21,7 +21,8 @@ from app.security.recovery import generate_recovery_code, hash_recovery_code, ve
 from app.security.sessions import (
     SessionError, issue_session, revoke_all_for_user, revoke_session, rotate_session,
 )
-from app.security.tokens import create_access_token
+from app.models.models import UserSession
+from app.security.tokens import create_access_token, decode_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -181,3 +182,54 @@ async def recover(payload: RecoverRequest, request: Request, response: Response,
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_bearer_user)):
     return user
+
+
+async def _confirm_password(db: Session, request: Request, user: User, password: str) -> None:
+    """Re-check the password for sensitive actions. Wrong password is 403 (not 401, which the app treats as
+    an expired session) and shares a throttle so a stolen access token cannot be used to guess it."""
+    key, ip = f"pw:{user.id}", client_ip(request)
+    throttle.check_allowed(db, key, ip)
+    if not await verify_password(user.password_hash, password):
+        throttle.record_failure(db, key, ip)
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Incorrect password.")
+    throttle.record_success(db, key, ip)
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(payload: ChangePasswordRequest, request: Request,
+                          user: User = Depends(get_bearer_user), db: Session = Depends(get_db)):
+    try:
+        validate_password(payload.new_password, user.username)
+    except ValueError as err:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(err))
+    await _confirm_password(db, request, user, payload.current_password)
+    user.password_hash = await hash_password(payload.new_password)
+    current_sid = decode_access_token(request.headers["Authorization"].split(" ", 1)[1].strip())["sid"]
+    db.query(UserSession).filter(
+        UserSession.user_id == user.id, UserSession.id != current_sid, UserSession.revoked_at.is_(None)
+    ).update({"revoked_at": _naive_now()}, synchronize_session=False)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/deactivate", status_code=status.HTTP_204_NO_CONTENT)
+async def deactivate(payload: PasswordConfirmRequest, request: Request,
+                     user: User = Depends(get_bearer_user), db: Session = Depends(get_db)):
+    await _confirm_password(db, request, user, payload.password)
+    user.is_active = False
+    db.commit()
+    revoke_all_for_user(db, user.id)
+    resp = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_refresh_cookie(resp)
+    return resp
+
+
+@router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(payload: PasswordConfirmRequest, request: Request,
+                         user: User = Depends(get_bearer_user), db: Session = Depends(get_db)):
+    await _confirm_password(db, request, user, payload.password)
+    db.delete(user)  # ORM cascade removes documents, cards, questions, attempts, flags and sessions
+    db.commit()
+    resp = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_refresh_cookie(resp)
+    return resp

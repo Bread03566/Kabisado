@@ -91,3 +91,19 @@ class TokenResponse(BaseModel):
 
 class RecoveryTokenResponse(TokenResponse):
     recovery_code: str  # shown exactly once
+
+
+class ChangePasswordRequest(_Strict):
+    current_password: str = Field(max_length=128)
+    new_password: str = Field(max_length=128)
+    confirm_password: str = Field(max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match.")
+        return self
+
+
+class PasswordConfirmRequest(_Strict):
+    password: str = Field(max_length=128)
