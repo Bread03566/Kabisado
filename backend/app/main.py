@@ -29,11 +29,19 @@ async def lifespan(app: FastAPI):
         logger.exception("Retention purge failed; continuing startup")
     yield
 
+def docs_urls(debug: bool) -> dict:
+    """Interactive API docs and the schema are for development only; production does not publish its API map."""
+    if debug:
+        return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Backend API for Kabisado - AI-Powered Study App (Study today, pass tomorrow)",
-    lifespan=lifespan
+    lifespan=lifespan,
+    **docs_urls(settings.DEBUG),
 )
 
 # CORS setup
