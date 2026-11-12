@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: kabisado-api
+    runtime: docker
+    rootDir: backend
+    plan: starter            # persistent disks need a paid plan (~$7/mo)
+    healthCheckPath: /api/health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false          # you paste this in the Render dashboard
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        value: sqlite:////data/kabisado.db
+      - key: UPLOAD_DIR
+        value: /data/uploads
+    disk:
+      name: kabisado-data
+      mountPath: /data
+      sizeGB: 1
