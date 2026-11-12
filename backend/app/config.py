@@ -8,6 +8,15 @@ from typing import Optional
 # directory the server happens to be started in.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def normalize_database_url(url: str) -> str:
+    """Hosts hand out `postgres://` or `postgresql://`; SQLAlchemy needs the psycopg 3 driver named."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 class Settings(BaseSettings):
     APP_NAME: str = "Kabisado API"
     APP_VERSION: str = "1.0.0"
@@ -72,6 +81,7 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def anchor_sqlite_path(cls, url: str) -> str:
+        url = normalize_database_url(url)
         prefix = "sqlite:///"
         if not url.startswith(prefix) or url.startswith(prefix + "/") or url == "sqlite:///:memory:":
             return url
