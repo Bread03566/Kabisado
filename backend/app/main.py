@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import SessionLocal, ensure_schema
-from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat, auth, admin, export, consent
+from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat, auth, admin, export, consent, exam
 from app.security import retention
 from app.services.ai_service import ai_service
 from app.web import install_web
@@ -57,6 +57,7 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(export.router)
 app.include_router(consent.router)
+app.include_router(exam.router)
 
 
 @app.get("/api/health")

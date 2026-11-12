@@ -9,6 +9,7 @@ import QuizMode from './views/QuizMode';
 import ProgressView from './views/ProgressView';
 import ChatView from './views/ChatView';
 import AdminView from './views/AdminView';
+import ExamPrepView from './views/ExamPrepView';
 import { useAuth } from './components/AuthGate';
 import { CloudOff, X } from 'lucide-react';
 import { getDocuments, checkHealth } from './services/api';
@@ -110,6 +111,8 @@ export default function App() {
             setActiveView('library');
           } else if (tab === 'dashboard') {
             setActiveView('dashboard');
+          } else if (tab === 'exam') {
+            setActiveView('exam');
           } else if (tab === 'admin' && user?.role === 'admin') {
             setActiveView('admin');
           } else if (tab === 'document' && currentDoc) {
@@ -157,6 +160,8 @@ export default function App() {
             showToast={showToast}
           />
         )}
+
+        {activeView === 'exam' && <ExamPrepView documents={documents} showToast={showToast} />}
 
         {activeView === 'admin' && user?.role === 'admin' && <AdminView showToast={showToast} />}
 

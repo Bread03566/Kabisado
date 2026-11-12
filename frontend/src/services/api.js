@@ -283,6 +283,24 @@ export const deactivateAccount = (password) => accountCall("POST", "/api/auth/de
 
 export const deleteAccount = (password) => accountCall("DELETE", "/api/auth/account", { password });
 
+// ==================== Exam Prep ====================
+async function examCall(path, body) {
+  const res = await authFetch(`${API_BASE}/api/exam${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Exam Prep request failed");
+  }
+  return res.json();
+}
+
+export const getExamPlan = (documentIds, days) => examCall("/plan", { document_ids: documentIds, days });
+export const getExamPractice = (documentIds, count = 15) => examCall("/practice", { document_ids: documentIds, count });
+export const submitExam = (answers) => examCall("/submit", { answers });
+
 // ==================== Gemini consent ====================
 async function consentCall(method, path, body) {
   const res = await authFetch(`${API_BASE}/api/consent${path}`, {
