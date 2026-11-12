@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = True  # false only for local http development
     ARGON2_MEMORY_KIB: int = 19456
     ARGON2_TIME_COST: int = 2
+    TRUST_PROXY: bool = False  # true behind Render's proxy: the client IP is the last X-Forwarded-For hop
 
     # Gemini AI. Global kill switch: nothing is ever sent to Google unless this is true, even when a
     # key is set. Stays false until the owner has verified billing and reviewed Google's terms.
@@ -53,6 +54,12 @@ class Settings(BaseSettings):
     @property
     def allowed_origins(self) -> list[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def refresh_cookie_name(self) -> str:
+        # The __Host- prefix makes browsers insist on Secure + Path=/ and no Domain, so sibling
+        # subdomains cannot overwrite it. It cannot be used over plain http (local dev).
+        return "__Host-kabisado_rt" if self.COOKIE_SECURE else "kabisado_rt"
 
     @field_validator("ALLOWED_ORIGINS")
     @classmethod
