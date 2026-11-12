@@ -13,4 +13,5 @@ sleep 2
 export MSYS_NO_PATHCONV=1
 docker run --rm --network kab-pgnet -v "$PWD":/app -w /app \
   -e DATABASE_URL=postgresql://postgres:pw@kab-pg:5432/postgres -e AUTO_CREATE_SCHEMA=false \
+  -e JWT_SECRET=test-secret-test-secret-test-secret-0123456789 -e DEBUG=true \
   kabisado-backend-test sh -c 'if [ -f alembic.ini ]; then alembic upgrade head; fi && python -m pytest "$@"' sh "$@"

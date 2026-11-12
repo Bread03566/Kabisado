@@ -1,6 +1,9 @@
-from sqlalchemy import create_engine, event, inspect, text
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
-from app.config import settings
+from app.config import BASE_DIR, settings
 
 def build_engine(url: str):
     """
@@ -34,30 +37,28 @@ engine = build_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-def init_db():
-    import app.models.models
-    Base.metadata.create_all(bind=engine)
-    add_missing_columns()
-
-def add_missing_columns():
+def ensure_schema(bind=None, auto_create=None):
     """
-    create_all() only creates missing tables. Columns added to an existing model later
-    (e.g. questions.question_type) are added here, so existing databases keep working.
-    New columns must be nullable or have a server_default.
+    The schema is owned by Alembic. With AUTO_CREATE_SCHEMA (local dev and tests) tables are created
+    straight from the models. Otherwise the database must already be at the latest migration, and the
+    app refuses to start if it is not, so code and schema can never silently drift apart.
+    Deploy order: run `alembic upgrade head` first, then deploy the new code.
     """
-    inspector = inspect(engine)
-    with engine.begin() as conn:
-        for table in Base.metadata.sorted_tables:
-            if not inspector.has_table(table.name):
-                continue
-            existing = {col["name"] for col in inspector.get_columns(table.name)}
-            for column in table.columns:
-                if column.name in existing:
-                    continue
-                ddl = f'ALTER TABLE {table.name} ADD COLUMN {column.name} {column.type.compile(engine.dialect)}'
-                if column.server_default is not None:
-                    ddl += f" DEFAULT '{column.server_default.arg}'"
-                conn.execute(text(ddl))
+    import app.models.models  # noqa: F401  (registers every table on Base.metadata)
+    bind = bind if bind is not None else engine
+    auto = settings.AUTO_CREATE_SCHEMA if auto_create is None else auto_create
+    if auto:
+        Base.metadata.create_all(bind=bind)
+        return
+    cfg = Config()
+    cfg.set_main_option("script_location", str(BASE_DIR / "migrations"))
+    head = ScriptDirectory.from_config(cfg).get_current_head()
+    with bind.connect() as conn:
+        current = MigrationContext.configure(conn).get_current_revision()
+    if current != head:
+        raise RuntimeError(
+            f"Database schema is at revision {current}, expected {head}. Run: alembic upgrade head"
+        )
 
 def get_db():
     db = SessionLocal()

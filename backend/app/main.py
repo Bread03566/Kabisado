@@ -5,19 +5,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database import engine, Base, init_db
+from app.database import ensure_schema
 from app.routers import documents, summaries, flashcards, quizzes, flags, progress, chat
 from app.services.ai_service import ai_service
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("kabisado")
 
-# Ensure DB tables exist on launch
-init_db()
+# Fail fast if the database is not at the latest migration (or create tables in dev/test mode).
+ensure_schema()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
     yield
 
 app = FastAPI(

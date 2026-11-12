@@ -278,32 +278,6 @@ def test_check_endpoint_forgives_typos_in_typed_answers(client):
     assert bad["correct_answer"] == answer
 
 
-def test_existing_databases_get_new_columns(tmp_path):
-    import sqlite3
-    from sqlalchemy import create_engine, inspect
-    from app import database
-
-    path = tmp_path / "old.db"
-    con = sqlite3.connect(path)
-    con.execute("CREATE TABLE questions (id INTEGER PRIMARY KEY, document_id INTEGER, topic_id INTEGER, question_text TEXT, "
-                "choices JSON, correct_index INTEGER, explanation TEXT, difficulty VARCHAR(20), created_at DATETIME)")
-    con.execute("INSERT INTO questions (document_id, question_text, choices, correct_index, explanation) VALUES (1, 'Old?', '[]', 0, 'x')")
-    con.commit()
-    con.close()
-
-    old_engine = database.engine
-    database.engine = create_engine(f"sqlite:///{path.as_posix()}")
-    try:
-        database.add_missing_columns()
-        columns = {c["name"] for c in inspect(database.engine).get_columns("questions")}
-        with database.engine.connect() as conn:
-            existing_type = conn.exec_driver_sql("SELECT question_type FROM questions").scalar()
-    finally:
-        database.engine = old_engine
-    assert {"question_type", "style", "answer_data"} <= columns
-    assert existing_type == "multiple_choice"
-
-
 def test_each_browser_only_sees_its_own_documents():
     with TestClient(app, headers=ALICE) as alice, TestClient(app, headers=BOB) as bob:
         doc = make_doc(alice, title="Alice private notes")
